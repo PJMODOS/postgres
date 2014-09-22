@@ -249,6 +249,11 @@
      </row>
 
      <row>
+      <entry><link linkend="catalog-pg-seqam"><structname>pg_seqam</structname></link></entry>
+      <entry>sequence access methods</entry>
+     </row>
+
+     <row>
       <entry><link linkend="catalog-pg-shdepend"><structname>pg_shdepend</structname></link></entry>
       <entry>dependencies on shared objects</entry>
      </row>
@@ -5534,6 +5539,95 @@
     </tbody>
    </tgroup>
   </table>
+ </sect1>
+
+ <sect1 id="catalog-pg-seqam">
+  <title><structname>pg_seqam</structname></title>
+
+  <indexterm zone="catalog-pg-seqam">
+   <primary>pg_seqam</primary>
+  </indexterm>
+
+  <para>
+   The catalog <structname>pg_seqam</structname> stores information about
+   sequence access methods. There is one row for each sequence access method
+   installed on the system.
+  </para>
+
+  <table>
+   <title><structname>pg_seqam</> Columns</title>
+
+   <tgroup cols="4">
+    <thead>
+     <row>
+      <entry>Name</entry>
+      <entry>Type</entry>
+      <entry>References</entry>
+      <entry>Description</entry>
+     </row>
+    </thead>
+    <tbody>
+
+     <row>
+      <entry><structfield>oid</structfield></entry>
+      <entry><type>oid</type></entry>
+      <entry></entry>
+      <entry>Row identifier (hidden attribute; must be explicitly selected)</entry>
+     </row>
+
+     <row>
+      <entry><structfield>seqamname</structfield></entry>
+      <entry><type>name</type></entry>
+      <entry></entry>
+      <entry>Name of the access method</entry>
+     </row>
+
+     <row>
+      <entry><structfield>seqamreloptions</structfield></entry>
+      <entry><type>regproc</type></entry>
+      <entry><literal><link linkend="catalog-pg-proc"><structname>pg_proc</structname></link>.oid</literal></entry>
+      <entry>Function to parse and validate <structfield>reloptions</> for the access method</entry>
+     </row>
+
+     <row>
+      <entry><structfield>seqaminit</structfield></entry>
+      <entry><type>regproc</type></entry>
+      <entry><literal><link linkend="catalog-pg-proc"><structname>pg_proc</structname></link>.oid</literal></entry>
+      <entry>Function called during initialization or <command>RESET</command> of a sequence</entry>
+     </row>
+
+     <row>
+      <entry><structfield>seqamalloc</structfield></entry>
+      <entry><type>regproc</type></entry>
+      <entry><literal><link linkend="catalog-pg-proc"><structname>pg_proc</structname></link>.oid</literal></entry>
+      <entry><quote>Allocate new sequence id</quote> function</entry>
+     </row>
+
+     <row>
+      <entry><structfield>seqamsetval</structfield></entry>
+      <entry><type>regproc</type></entry>
+      <entry><literal><link linkend="catalog-pg-proc"><structname>pg_proc</structname></link>.oid</literal></entry>
+      <entry>Function implementing <function>setval()</function> interface</entry>
+     </row>
+
+     <row>
+      <entry><structfield>seqamgetstate</structfield></entry>
+      <entry><type>regproc</type></entry>
+      <entry><literal><link linkend="catalog-pg-proc"><structname>pg_proc</structname></link>.oid</literal></entry>
+      <entry>Function to dump current state of a sequence (used mainly by pg_dump)</entry>
+     </row>
+
+     <row>
+      <entry><structfield>seqamsetstate</structfield></entry>
+      <entry><type>regproc</type></entry>
+      <entry><literal><link linkend="catalog-pg-proc"><structname>pg_proc</structname></link>.oid</literal></entry>
+      <entry>Function to restore a dumped state of a sequence (used mainly by pg_dump)</entry>
+     </row>
+
+    </tbody>
+   </tgroup>
+  </table>
+
  </sect1>
 
  <sect1 id="catalog-pg-shdepend">

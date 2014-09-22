@@ -1833,6 +1833,10 @@ DATA(insert OID = 1765 (  setval			PGNSP PGUID 12 1 0 0 0 f f f f t f v 3 0 20 "
 DESCR("set sequence value and is_called status");
 DATA(insert OID = 3078 (  pg_sequence_parameters	PGNSP PGUID 12 1 0 0 0 f f f f t f s 1 0 2249 "26" "{26,20,20,20,20,16}" "{i,o,o,o,o,o}" "{sequence_oid,start_value,minimum_value,maximum_value,increment,cycle_option}" _null_ _null_ pg_sequence_parameters _null_ _null_ _null_));
 DESCR("sequence parameters, for use by information schema");
+DATA(insert OID = 3377 (  pg_sequence_get_state		PGNSP PGUID 12 1 0 0 0 f f f f t f v 1 0 1009 "2205" _null_ _null_ _null_ _null_ _null_ pg_sequence_get_state _null_ _null_ _null_ ));
+DESCR("Dump state of a sequence");
+DATA(insert OID = 3378 (  pg_sequence_set_state		PGNSP PGUID 12 1 0 0 0 f f f f t f v 2 0 2278 "2205 1009" _null_ _null_ _null_ _null_ _null_ pg_sequence_set_state _null_ _null_ _null_ ));
+DESCR("Restore state of a sequence");
 
 DATA(insert OID = 1579 (  varbit_in			PGNSP PGUID 12 1 0 0 0 f f f f t f i 3 0 1562 "2275 26 23" _null_ _null_ _null_ _null_ _null_ varbit_in _null_ _null_ _null_ ));
 DESCR("I/O");
@@ -5120,6 +5124,20 @@ DATA(insert OID = 3784 (  pg_logical_slot_peek_changes PGNSP PGUID 12 1000 1000 
 DESCR("peek at changes from replication slot");
 DATA(insert OID = 3785 (  pg_logical_slot_peek_binary_changes PGNSP PGUID 12 1000 1000 25 0 f f f f f t v 4 0 2249 "19 3220 23 1009" "{19,3220,23,1009,3220,28,17}" "{i,i,i,v,o,o,o}" "{slot_name,upto_lsn,upto_nchanges,options,location,xid,data}" _null_ _null_ pg_logical_slot_peek_binary_changes _null_ _null_ _null_ ));
 DESCR("peek at binary changes from replication slot");
+
+DATA(insert OID = 6023 (  seqam_local_reloptions	   PGNSP PGUID 12 1 0 0 0 f f f f f f s 2 0 17 "2281 16" _null_ _null_ _null_ _null_ _null_ seqam_local_reloptions _null_ _null_ _null_ ));
+DESCR("Local SequenceAM options");
+DATA(insert OID = 6024 (  seqam_local_init	   PGNSP PGUID 12 1 0 0 0 f f f f f f s 5 0 17 "2281 2281 20 16 16" _null_ _null_ _null_ _null_ _null_ seqam_local_init _null_ _null_ _null_ ));
+DESCR("Initialize local SequenceAM sequence");
+DATA(insert OID = 6025 (  seqam_local_alloc	   PGNSP PGUID 12 1 0 0 0 f f f f f f v 4 0 2281 "2281 2281 20 2281" _null_ _null_ _null_ _null_ _null_ seqam_local_alloc _null_ _null_ _null_ ));
+DESCR("Local SequenceAM allocation");
+DATA(insert OID = 6026 (  seqam_local_setval	   PGNSP PGUID 12 1 0 0 0 f f f f f f s 3 0 2278 "2281 2281 20" _null_ _null_ _null_ _null_ _null_ seqam_local_setval _null_ _null_ _null_ ));
+DESCR("Set value of a local SequenceAM sequence");
+DATA(insert OID = 6027 (  seqam_local_get_state	   PGNSP PGUID 12 1 0 0 0 f f f f f f s 2 0 1009 "2281 2281" _null_ _null_ _null_ _null_ _null_ seqam_local_get_state _null_ _null_ _null_ ));
+DESCR("Dump state of a local SequenceAM sequence");
+DATA(insert OID = 6028 (  seqam_local_set_state	   PGNSP PGUID 12 1 0 0 0 f f f f f f s 3 0 2278 "2281 2281 1009" _null_ _null_ _null_ _null_ _null_ seqam_local_set_state _null_ _null_ _null_ ));
+DESCR("Restore state of a local SequenceAM sequence");
+
 
 /* event triggers */
 DATA(insert OID = 3566 (  pg_event_trigger_dropped_objects		PGNSP PGUID 12 10 100 0 0 f f f f t t s 0 0 2249 "" "{26,26,23,16,16,16,25,25,25,25,1009,1009}" "{o,o,o,o,o,o,o,o,o,o,o,o}" "{classid, objid, objsubid, original, normal, is_temporary, object_type, schema_name, object_name, object_identity, address_names, address_args}" _null_ _null_ pg_event_trigger_dropped_objects _null_ _null_ _null_ ));

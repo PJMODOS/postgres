@@ -87,6 +87,7 @@ static void AddNewRelationTuple(Relation pg_class_desc,
 					Oid reloftype,
 					Oid relowner,
 					char relkind,
+					Oid relam,
 					Datum relacl,
 					Datum reloptions);
 static ObjectAddress AddNewRelationType(const char *typeName,
@@ -847,6 +848,7 @@ AddNewRelationTuple(Relation pg_class_desc,
 					Oid reloftype,
 					Oid relowner,
 					char relkind,
+					Oid relam,
 					Datum relacl,
 					Datum reloptions)
 {
@@ -920,6 +922,7 @@ AddNewRelationTuple(Relation pg_class_desc,
 	new_rel_reltup->relowner = relowner;
 	new_rel_reltup->reltype = new_type_oid;
 	new_rel_reltup->reloftype = reloftype;
+	new_rel_reltup->relam = relam;
 
 	new_rel_desc->rd_att->tdtypeid = new_type_oid;
 
@@ -1033,6 +1036,7 @@ heap_create_with_catalog(const char *relname,
 						 bool use_user_acl,
 						 bool allow_system_table_mods,
 						 bool is_internal,
+						 Oid relam,
 						 ObjectAddress *typaddress)
 {
 	Relation	pg_class_desc;
@@ -1261,6 +1265,7 @@ heap_create_with_catalog(const char *relname,
 						reloftypeid,
 						ownerid,
 						relkind,
+						relam,
 						PointerGetDatum(relacl),
 						reloptions);
 
@@ -1273,7 +1278,8 @@ heap_create_with_catalog(const char *relname,
 	/*
 	 * Make a dependency link to force the relation to be deleted if its
 	 * namespace is.  Also make a dependency link to its owner, as well as
-	 * dependencies for any roles mentioned in the default ACL.
+	 * dependencies for any roles mentioned in the default ACL. When relam
+	 * is specified, record dependency on the
 	 *
 	 * For composite types, these dependencies are tracked for the pg_type
 	 * entry, so we needn't record them here.  Likewise, TOAST tables don't
@@ -1327,6 +1333,14 @@ heap_create_with_catalog(const char *relname,
 								  ownerid,
 								  0, NULL,
 								  nnewmembers, newmembers);
+		}
+
+		if (relkind == RELKIND_SEQUENCE)
+		{
+			referenced.classId = SeqAccessMethodRelationId;
+			referenced.objectId = relam;
+			referenced.objectSubId = 0;
+			recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
 		}
 	}
 

@@ -28,6 +28,7 @@
 
 #include "access/commit_ts.h"
 #include "access/gin.h"
+#include "access/seqam.h"
 #include "access/transam.h"
 #include "access/twophase.h"
 #include "access/xact.h"
@@ -2891,6 +2892,17 @@ static struct config_string ConfigureNamesString[] =
 		&default_tablespace,
 		"",
 		check_default_tablespace, NULL, NULL
+	},
+
+	{
+		{"serial_sequenceam", PGC_USERSET, CLIENT_CONN_STATEMENT,
+			gettext_noop("Sets the default sequence access method for SERIAL and BIGSERIAL column types."),
+			gettext_noop("Defaults to 'local' sequence access method."),
+			GUC_IS_NAME
+		},
+		&serial_seqam,
+		"local",
+		check_serial_seqam, NULL, NULL
 	},
 
 	{

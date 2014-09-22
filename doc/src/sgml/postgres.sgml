@@ -249,6 +249,7 @@
   &spgist;
   &gin;
   &brin;
+  &seqam;
   &storage;
   &bki;
   &planstats;

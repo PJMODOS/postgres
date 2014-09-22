@@ -51,6 +51,7 @@
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_rewrite.h"
+#include "catalog/pg_seqam.h"
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_trigger.h"
 #include "catalog/pg_type.h"
@@ -266,6 +267,7 @@ static void RelationParseRelOptions(Relation relation, HeapTuple tuple);
 static void RelationBuildTupleDesc(Relation relation);
 static Relation RelationBuildDesc(Oid targetRelId, bool insertIt);
 static void RelationInitPhysicalAddr(Relation relation);
+static void RelationInitSequenceAccessInfo(Relation relation);
 static void load_critical_index(Oid indexoid, Oid heapoid);
 static TupleDesc GetPgClassDescriptor(void);
 static TupleDesc GetPgIndexDescriptor(void);
@@ -429,6 +431,7 @@ static void
 RelationParseRelOptions(Relation relation, HeapTuple tuple)
 {
 	bytea	   *options;
+	Oid			amoptions = InvalidOid;
 
 	relation->rd_options = NULL;
 
@@ -437,9 +440,14 @@ RelationParseRelOptions(Relation relation, HeapTuple tuple)
 	{
 		case RELKIND_RELATION:
 		case RELKIND_TOASTVALUE:
-		case RELKIND_INDEX:
 		case RELKIND_VIEW:
 		case RELKIND_MATVIEW:
+			break;
+		case RELKIND_INDEX:
+			amoptions = relation->rd_am->amoptions;
+			break;
+		case RELKIND_SEQUENCE:
+			amoptions = relation->rd_seqam->seqamreloptions;
 			break;
 		default:
 			return;
@@ -452,8 +460,7 @@ RelationParseRelOptions(Relation relation, HeapTuple tuple)
 	 */
 	options = extractRelOptions(tuple,
 								GetPgClassDescriptor(),
-								relation->rd_rel->relkind == RELKIND_INDEX ?
-								relation->rd_am->amoptions : InvalidOid);
+								amoptions);
 
 	/*
 	 * Copy parsed data into CacheMemoryContext.  To guard against the
@@ -1056,11 +1063,14 @@ RelationBuildDesc(Oid targetRelId, bool insertIt)
 	else
 		relation->rd_rsdesc = NULL;
 
-	/*
-	 * if it's an index, initialize index-related information
-	 */
-	if (OidIsValid(relation->rd_rel->relam))
+	/* if it's an index, initialize index-related information */
+	if (relation->rd_rel->relkind == RELKIND_INDEX &&
+		OidIsValid(relation->rd_rel->relam))
 		RelationInitIndexAccessInfo(relation);
+	/* same for sequences */
+	else if (relation->rd_rel->relkind == RELKIND_SEQUENCE &&
+			 OidIsValid(relation->rd_rel->relam))
+		RelationInitSequenceAccessInfo(relation);
 
 	/* extract reloptions if any */
 	RelationParseRelOptions(relation, pg_class_tuple);
@@ -1535,6 +1545,36 @@ LookupOpclassInfo(Oid operatorClassOid,
 	return opcentry;
 }
 
+/*
+ * Initialize sequence-access-method support data for a sequence relation
+ */
+static void
+RelationInitSequenceAccessInfo(Relation rel)
+{
+	HeapTuple		amtuple;
+	Form_pg_seqam	amform;
+
+	/*
+	 * Make a copy of the pg_seqam entry for the sequence's access method
+	 */
+	amtuple = SearchSysCache1(SEQAMOID, ObjectIdGetDatum(rel->rd_rel->relam));
+	if (!HeapTupleIsValid(amtuple))
+		elog(ERROR, "cache lookup failed for sequence access method %u",
+			 rel->rd_rel->relam);
+	amform = (Form_pg_seqam) MemoryContextAlloc(CacheMemoryContext,
+												sizeof(*amform));
+	memcpy(amform, GETSTRUCT(amtuple), sizeof(*amform));
+	ReleaseSysCache(amtuple);
+	rel->rd_seqam = amform;
+
+	/*
+	 * Initialize sequence AM info struct. (It's left as zeroes, and filled
+	 * on-the-fly when used.)
+	 */
+	rel->rd_seqaminfo = (RelationSeqAmInfo *)
+		MemoryContextAllocZero(CacheMemoryContext,
+							   sizeof(RelationSeqAmInfo));
+}
 
 /*
  *		formrdesc
@@ -2021,6 +2061,10 @@ RelationDestroyRelation(Relation relation, bool remember_tupdesc)
 		pfree(relation->rd_indextuple);
 	if (relation->rd_am)
 		pfree(relation->rd_am);
+	if (relation->rd_seqam)
+		pfree(relation->rd_seqam);
+	if (relation->rd_seqaminfo)
+		pfree(relation->rd_seqaminfo);
 	if (relation->rd_indexcxt)
 		MemoryContextDelete(relation->rd_indexcxt);
 	if (relation->rd_rulescxt)
@@ -4840,6 +4884,8 @@ load_relcache_init_file(bool shared)
 			Assert(rel->rd_supportinfo == NULL);
 			Assert(rel->rd_indoption == NULL);
 			Assert(rel->rd_indcollation == NULL);
+			Assert(rel->rd_seqam == NULL);
+			Assert(rel->rd_seqaminfo == NULL);
 		}
 
 		/*

@@ -106,9 +106,9 @@ SELECT table_name, column_name, is_updatable
  ro_view19  | max_value     | NO
  ro_view19  | min_value     | NO
  ro_view19  | cache_value   | NO
- ro_view19  | log_cnt       | NO
  ro_view19  | is_cycled     | NO
  ro_view19  | is_called     | NO
+ ro_view19  | amdata        | NO
  ro_view2   | a             | NO
  ro_view2   | b             | NO
  ro_view20  | a             | NO

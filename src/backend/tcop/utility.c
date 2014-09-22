@@ -932,7 +932,8 @@ ProcessUtilitySlow(Node *parsetree,
 							/* Create the table itself */
 							address = DefineRelation((CreateStmt *) stmt,
 													 RELKIND_RELATION,
-													 InvalidOid, NULL);
+													 InvalidOid, InvalidOid,
+													 NULL);
 
 							/*
 							 * Let NewRelationCreateToastTable decide if this
@@ -962,7 +963,8 @@ ProcessUtilitySlow(Node *parsetree,
 							/* Create the table itself */
 							address = DefineRelation((CreateStmt *) stmt,
 													 RELKIND_FOREIGN_TABLE,
-													 InvalidOid, NULL);
+													 InvalidOid, InvalidOid,
+													 NULL);
 							CreateForeignTable((CreateForeignTableStmt *) stmt,
 											   address.objectId);
 						}

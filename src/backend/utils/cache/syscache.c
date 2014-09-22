@@ -54,6 +54,7 @@
 #include "catalog/pg_shdepend.h"
 #include "catalog/pg_shdescription.h"
 #include "catalog/pg_shseclabel.h"
+#include "catalog/pg_seqam.h"
 #include "catalog/pg_statistic.h"
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_transform.h"
@@ -631,6 +632,28 @@ static const struct cachedesc cacheinfo[] = {
 			0
 		},
 		8
+	},
+	{SeqAccessMethodRelationId,	/* SEQAMNAME */
+		SeqAMNameIndexId,
+		1,
+		{
+			Anum_pg_seqam_seqamname,
+			0,
+			0,
+			0
+		},
+		4
+	},
+	{SeqAccessMethodRelationId,	/* SEQAMOID */
+		SeqAMOidIndexId,
+		1,
+		{
+			ObjectIdAttributeNumber,
+			0,
+			0,
+			0
+		},
+		4
 	},
 	{StatisticRelationId,		/* STATRELATTINH */
 		StatisticRelidAttnumInhIndexId,

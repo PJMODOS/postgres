@@ -829,7 +829,8 @@ untransformRelOptions(Datum options)
  * instead.
  *
  * tupdesc is pg_class' tuple descriptor.  amoptions is the amoptions regproc
- * in the case of the tuple corresponding to an index, or InvalidOid otherwise.
+ * in the case of the tuple corresponding to an index or sequence, InvalidOid
+ * otherwise.
  */
 bytea *
 extractRelOptions(HeapTuple tuple, TupleDesc tupdesc, Oid amoptions)
@@ -860,7 +861,10 @@ extractRelOptions(HeapTuple tuple, TupleDesc tupdesc, Oid amoptions)
 			options = view_reloptions(datum, false);
 			break;
 		case RELKIND_INDEX:
-			options = index_reloptions(amoptions, datum, false);
+			options = am_reloptions(amoptions, datum, false);
+			break;
+		case RELKIND_SEQUENCE:
+			options = am_reloptions(amoptions, datum, false);
 			break;
 		case RELKIND_FOREIGN_TABLE:
 			options = NULL;
@@ -1308,14 +1312,14 @@ heap_reloptions(char relkind, Datum reloptions, bool validate)
 
 
 /*
- * Parse options for indexes.
+ * Parse options for indexes or sequences.
  *
  *	amoptions	Oid of option parser
  *	reloptions	options as text[] datum
  *	validate	error flag
  */
 bytea *
-index_reloptions(RegProcedure amoptions, Datum reloptions, bool validate)
+am_reloptions(RegProcedure amoptions, Datum reloptions, bool validate)
 {
 	FmgrInfo	flinfo;
 	FunctionCallInfoData fcinfo;

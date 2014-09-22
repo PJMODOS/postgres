@@ -18,6 +18,7 @@
 #include "catalog/pg_am.h"
 #include "catalog/pg_class.h"
 #include "catalog/pg_index.h"
+#include "catalog/pg_seqam.h"
 #include "fmgr.h"
 #include "nodes/bitmapset.h"
 #include "rewrite/prs2lock.h"
@@ -62,6 +63,18 @@ typedef struct RelationAmInfo
 	FmgrInfo	amrestrpos;
 	FmgrInfo	amcanreturn;
 } RelationAmInfo;
+
+
+/*
+ * Cached lookup information for the frequently used sequence access method
+ * functions, defined by the pg_seqam row associated with a sequencerelation.
+ */
+typedef struct RelationSeqAmInfo
+{
+	/* pg_seqam only */
+	FmgrInfo	seqamalloc;
+	FmgrInfo	seqamsetval;
+} RelationSeqAmInfo;
 
 
 /*
@@ -125,6 +138,10 @@ typedef struct RelationData
 	 */
 	bytea	   *rd_options;		/* parsed pg_class.reloptions */
 
+	/* These are non-NULL only for a sequence relation */
+	Form_pg_seqam rd_seqam;		/* pg_seqam tuple for sequence's AM */
+	RelationSeqAmInfo *rd_seqaminfo; /* lookup info for funcs found in pg_seqam */
+
 	/* These are non-NULL only for an index relation: */
 	Form_pg_index rd_index;		/* pg_index tuple describing this index */
 	/* use "struct" here to avoid needing to include htup.h: */
@@ -132,7 +149,7 @@ typedef struct RelationData
 	Form_pg_am	rd_am;			/* pg_am tuple for index's AM */
 
 	/*
-	 * index access support info (used only for an index relation)
+	 * index access support info (used only for index relations)
 	 *
 	 * Note: only default support procs for each opclass are cached, namely
 	 * those with lefttype and righttype equal to the opclass's opcintype. The

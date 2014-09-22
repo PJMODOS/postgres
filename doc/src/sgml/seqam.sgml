@@ -1,0 +1,289 @@
+<!-- doc/src/sgml/seqam.sgml -->
+
+<chapter id="seqam">
+ <title>Sequence Access Method Interface Definition</title>
+
+  <para>
+   This chapter describes the interface for writing sequence access methods.
+  </para>
+
+  <para>
+   The sequence access method defines behavior of a sequence which is using it.
+   Mainly how the new values are generated. Each sequence can have different
+   access method in order to behave in a way that makes most sense in the
+   application context.
+  </para>
+
+ <sect1 id="seqam-catalog">
+  <title>Catalog Entries for Sequence Access Method</title>
+
+  <para>
+   Each sequence access method is described by a row in the
+   <structname>pg_seqam</structname> system catalog (see
+   <xref linkend="catalog-pg-seqam">).  The contents of a
+   <structname>pg_seqam</structname> row is the name of the access method
+   and are references to
+   <link linkend="catalog-pg-proc"><structname>pg_proc</structname></link>
+   entries that identify the functions provided by the access method.
+   functions supplied by the access method.
+  </para>
+ </sect1>
+
+ <sect1 id="seqam-functions">
+  <title>Sequence Access Method Functions</title>
+
+  <para>
+   The behaviour of a sequence access method is defined by a set of functions.
+   These functions are implemented by the sequence access method.
+  </para>
+
+  <para>
+   The functions defining a sequence access method are:
+  </para>
+
+  <para>
+<programlisting>
+HeapTuple
+seqam_init (Relation seqrel, HeapTuple tuple, int64 restart_value,
+            bool restart_requested, bool is_init);
+</programlisting>
+   Initialize the sequence's internal state. This function is called both
+   when a new sequence is created, when the <command>ALTER SEQUENCE</> command
+   is called for an existing sequence or by the
+   <command>TRUNCATE RESTART IDENTITY</> command.
+  </para>
+
+  <para>
+   The <literal>seqrel</> points to relcache record representing the
+   <link linkend="catalog-pg-class"><structname>pg_class</structname></link>
+   tuple tuple of the sequence.
+   <literal>tuple</> is in-memory version of the
+   <structname>pg_sequence</structname> tuple itself. The
+   <literal>restart_value</> is value the sequence should start from and the
+   <literal>restart_requested</> gives indication if the
+   <literal>restart_value</> should indeed be used. Finally <literal>is_init</>
+   is <literal>true</> when this is new sequence being created or when the
+   access method of a sequence has been changed, otherwise it's
+   <literal>false</>.
+   to the options in the <command>CREATE SEQUENCE</> or
+   <command>ALTER SEQUENCE</> statement.
+   <literal>reloptions</> contains parsed reloptions passed to the
+   <command>CREATE SEQUENCE</> or <command>ALTER SEQUENCE</> statements.
+   The <literal>values</> and <literal>nulls</> describe new tuple for the
+   <structname>pg_sequence</structname> tuple which this function can update
+   as needed.
+  </para>
+
+  <para>
+   This function should return the updated
+   <structname>pg_sequence</structname>. If the tuple does not have to be
+   updated returning the input <literal>tuple</> is acceptable.
+  </para>
+
+  <para>
+<programlisting>
+bytea *
+seqam_reloptions (ArrayType *reloptions, bool validate);
+</programlisting>
+   Parse and validate the reloptions array for an sequence.
+   <parameter>reloptions</> is a <type>text</> array containing entries of the
+   form <replaceable>name</><literal>=</><replaceable>value</>.
+   The function should construct a <type>bytea</> value, which will be then sent
+   to the <function>seqam_init</> and stored in the catalog.
+   When <parameter>validate</> is true, the function should report a suitable
+   error message if any of the options are unrecognized or have invalid
+   values; when <parameter>validate</> is false, invalid entries should be
+   silently ignored.  (<parameter>validate</> is false when loading options
+   already stored in <structname>pg_catalog</>; an invalid entry could only
+   be found if the access method has changed its rules for options, and in
+   that case ignoring obsolete entries is appropriate.)
+   It is OK to return NULL if default behavior is wanted.
+  </para>
+
+  <para>
+<programlisting>
+int64
+seqam_alloc (Relation seqrel, SequenceHandle *seqh, int64 nrequested,
+             int64 *last);
+</programlisting>
+   Allocate new sequence value(s). The <literal>nrequested</> specifies how
+   many new values should be allocated by this call. Return value is the next
+   allocated value and <literal>last</> should be set to last allocated value.
+  </para>
+
+  <para>
+<programlisting>
+bool
+seqam_setval (Relation seqrel, SequenceHandle *seqh, int64 new_value)
+</programlisting>
+   Set the current sequence value the the <literal>new_value</>.
+  </para>
+
+  <para>
+<programlisting>
+ArrayType *
+seqam_get_state (Relation seqrel, SequenceHandle *seqh);
+</programlisting>
+   Dump the current state of the sequence. The return value is one dimensional
+   <literal>TEXT</> array containing list of key/value pairs it the form
+   <literal>{'key1', 'value1', 'key2', 'value2'}</>. This interface is mainly
+   used by <command>pg_dump</command>.
+  </para>
+
+  <para>
+<programlisting>
+void
+seqam_set_state (Relation seqrel, SequenceHandle *seqh, ArrayType *statearr);
+</programlisting>
+   Restore state of the sequence based on the key/value pairs defined in
+   the <literal>statearr</> in <literal>{'key1', 'value1', 'key2', 'value2'}</>
+   form. The <literal>statearr</> is defined as <literal>TEXT[]</> in SQL. This
+   function must accept output of the <function>seqam_get_state()</> function.
+   This interface is mainly used by <command>pg_dump</command>.
+  </para>
+
+ </sect1>
+
+ <sect1 id="seqam-storage">
+  <title>Sequence Access Method Storage API</title>
+
+  <para>
+   To store the current state of the sequence, the backend provides the
+   following functions which the sequence access method can use:
+  </para>
+
+  <para>
+<programlisting>
+void
+sequence_open(Oid relid, SequenceHandle *seqh);
+</programlisting>
+   Open sequence with given <literal>relid</>. The <literal>seqh</> is
+   output parameter which will be set to the sequence handle.
+  </para>
+
+  <para>
+<programlisting>
+void
+sequence_close (SequenceHandle *seqh);
+</programlisting>
+   Release and close the opened sequence.
+  </para>
+
+  <para>
+<programlisting>
+HeapTuple
+sequence_read_tuple (SequenceHandle *seqh);
+</programlisting>
+   Reads and locks the sequence tuple for processing by the access method.
+   The tuple should be released by calling <function>sequence_release_tuple</>.
+  </para>
+
+<programlisting>
+HeapTuple
+sequence_swap_tuple (SequenceHandle *seqh, HeapTuple *newtup);
+</programlisting>
+   Changes the working tuple to the <literal>newtup</>. This does not change
+   the sequence itself, only the state of the <struct>SequenceHandle</>. To
+   save the tuple the <function>sequence_*_update()</> sequence has to be
+   called. The tuple should be released by calling
+   <function>sequence_release_tuple</>. Note that you can't call this function
+   without calling <function>sequence_read_tuple()</> first.
+  </para>
+
+  <para>
+<programlisting>
+void
+sequence_start_update(SequenceHandle *seqh, bool do_wal);
+</programlisting>
+   Start the sequence update. The <literal>do_wal</> gives hint if at least
+   one of subsequent <function>sequence_apply_update()</> calls will be with
+   <literal>do_wal = true</>.
+</para>
+
+  <para>
+<programlisting>
+void
+sequence_apply_update(SequenceHandle *seqh, bool do_wal);
+</programlisting>
+   Save the modified sequence tuple indicating if the change should be WAL
+   logged as well as saved to the catalog.
+  </para>
+
+  <para>
+<programlisting>
+void
+sequence_finish_update(SequenceHandle *seqh, HeapTuple newtuple);
+</programlisting>
+   Finish the sequence update.
+  </para>
+
+  <para>
+  To update the sequence tuple you have to call all three above functions in
+  order to be sure the update is applied in error safe manner. The
+  <function>sequence_apply_update()</> can be called multiple times between
+  single pair of <function>sequence_start_update()</> and
+  <function>sequence_finish_update()</> calls. Update function cannot be called
+  if the tuple was already released by the
+  <function>sequence_release_tuple()</> function.
+  </para>
+
+  <para>
+<programlisting>
+void
+sequence_release_tuple(SequenceHandle *seqh);
+</programlisting>
+   Release the tuple read and locked by <function>sequence_read_tuple</> and/or
+   added by <function>sequence_swap_tuple</>.
+  </para>
+
+ </sect1>
+
+ <sect1 id="seqam-utility">
+  <title>Sequence Access Method Utility Functions</title>
+
+  <para>
+   Additional utility functions which can be useful when writing sequence
+   access methods:
+  </para>
+
+  <para>
+<programlisting>
+bool
+sequence_needs_wal(SequenceHandle *seqh);
+</programlisting>
+   Returns <literal>true</> if the sequence tuple was last saved before last
+   checkpoint. This can be help when deciding what to set <literal>do_wal</>
+   to when calling <function>sequence_apply_update</>.
+  </para>
+
+  <para>
+<programlisting>
+int64
+sequence_increment(Relation seqrel, int64 *value, int64 incnum,
+                   int64 minv, int64 maxv, int64 incby,
+                   bool is_cycled, bool report_errors);
+</programlisting>
+   Helper function to increment value of a sequence, correctly handling
+   sequence options like min value, max value, increment value and cycling of
+   the sequence value. The <literal>value</> is pointer to current value which
+   should be incremented, <literal>incnum</> specifies how much should the
+   value be incremented, the rest of the options should be set to values
+   specified by the sequence's <structname>pg_sequence</structname> tuple.
+   Returns by how much was the value increased.
+  </para>
+
+  <para>
+<programlisting>
+void
+sequence_check_range (int64 value, int64 min_value,
+                      int64 max_value, const char *valname);
+</programlisting>
+   Checks if the <literal>value</> is between <literal>min_value</>
+   and <literal>max_value</> and raises standard error message if it's not.
+   The <literal>valname</> is used as the name of the wrong value in the error
+   message.
+  </para>
+
+ </sect1>
+
+</chapter>

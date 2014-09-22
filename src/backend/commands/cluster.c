@@ -678,6 +678,7 @@ make_new_heap(Oid OIDOldHeap, Oid NewTableSpace, char relpersistence,
 										  false,
 										  true,
 										  true,
+										  InvalidOid,
 										  NULL);
 	Assert(OIDNewHeap != InvalidOid);
 
