@@ -1,0 +1,87 @@
+<!--
+doc/src/sgml/ref/drop_tablesamplemethod.sgml
+PostgreSQL documentation
+-->
+
+<refentry id="SQL-DROPTABLESAMPLEMETHOD">
+ <indexterm zone="sql-droptablesamplemethod">
+  <primary>DROP TABLESAMPLE METHOD</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>DROP TABLESAMPLE METHOD</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>DROP TABLESAMPLE METHOD</refname>
+  <refpurpose>remove a custom tablesample method</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+DROP TABLESAMPLE METHOD [ IF EXISTS ] <replaceable class="parameter">name</replaceable>
+</synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+
+  <para>
+   <command>DROP TABLESAMPLE METHOD</command> drop an existing tablesample
+   method.
+  </para>
+
+  <para>
+   You must be a superuser to use <command>CREATE TABLESAMPLE METHOD</command>.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>Parameters</title>
+
+  <variablelist>
+
+   <varlistentry>
+    <term><literal>IF EXISTS</literal></term>
+    <listitem>
+     <para>
+      Do not throw an error if the tablesample method does not exist.
+      A notice is issued in this case.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">name</replaceable></term>
+    <listitem>
+     <para>
+      The name of an existing tablesample method to be removed.
+     </para>
+    </listitem>
+   </varlistentry>
+
+  </variablelist>
+
+ </refsect1>
+
+ <refsect1>
+  <title>Compatibility</title>
+
+  <para>
+   There is no
+   <command>DROP TABLESAMPLE METHOD</command> statement in the SQL
+   standard.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>See Also</title>
+
+  <simplelist type="inline">
+   <member><xref linkend="sql-createtablesamplemethod"></member>
+   <member><xref linkend="sql-select"></member>
+  </simplelist>
+ </refsect1>
+</refentry>

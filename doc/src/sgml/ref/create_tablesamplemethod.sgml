@@ -1,0 +1,184 @@
+<!--
+doc/src/sgml/ref/create_tablesamplemethod.sgml
+PostgreSQL documentation
+-->
+
+<refentry id="SQL-CREATETABLESAMPLEMETHOD">
+ <indexterm zone="sql-createtablesamplemethod">
+  <primary>CREATE TABLESAMPLE METHOD</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>CREATE TABLESAMPLE METHOD</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>CREATE TABLESAMPLE METHOD</refname>
+  <refpurpose>define custom tablesample method</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+CREATE TABLESAMPLE METHOD <replaceable class="parameter">name</replaceable> (
+    INIT = <replaceable class="parameter">init_function</replaceable> ,
+    NEXTBLOCK = <replaceable class="parameter">nextblock_function</replaceable> ,
+    NEXTTUPLE = <replaceable class="parameter">nexttuple_function</replaceable> ,
+    END = <replaceable class="parameter">end_function</replaceable> ,
+    RESET = <replaceable class="parameter">reset_function</replaceable> ,
+    COST = <replaceable class="parameter">cost_function</replaceable>
+    [ , EXAMINETUPLE = <replaceable class="parameter">examinetuple_function</replaceable> ]
+    [ , SEQSCAN = <replaceable class="parameter">seqscan</replaceable> ]
+    [ , PAGEMODE = <replaceable class="parameter">pagemode</replaceable> ]
+)
+</synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+
+  <para>
+   <command>CREATE TABLESAMPLE METHOD</command> creates a tablesample method.
+   A tablesample method provides alrorithm for reading sample part of a table
+   when used in <command>TABLESAMPLE</> clause of a <command>SELECT</>
+   statement.
+  </para>
+
+  <para>
+   You must be a superuser to use <command>CREATE TABLESAMPLE METHOD</command>.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>Parameters</title>
+
+  <variablelist>
+   <varlistentry>
+    <term><replaceable class="parameter">name</replaceable></term>
+    <listitem>
+     <para>
+      The name of the tablesample method to be created. This name must be
+      unique within the database.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">init_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the init function for the tablesample method.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">nextblock_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the get-next-block function for the tablesample method.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">nexttuple_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the get-next-tuple function for the tablesample method.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">end_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the end function for the tablesample method.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">reset_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the reset function for the tablesample method.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">cost_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the costing function for the tablesample method.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">examinetuple_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the function for inspecting the tuple contents in order
+      to make decision if it should be returned or not. This parameter
+      is optional.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">seqscan</replaceable></term>
+    <listitem>
+     <para>
+      True if the sampling method will do sequential scan of the whole table.
+      Used for cost estimation and syncscan. The default value if not specified
+      is False.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">pagemode</replaceable></term>
+    <listitem>
+     <para>
+      True if the sampling method will read whole page at a time. The default
+      value if not specified is False.
+     </para>
+    </listitem>
+   </varlistentry>
+
+  </variablelist>
+
+  <para>
+   The function names can be schema-qualified if necessary.  Argument types
+   are not given, since the argument list for each type of function is
+   predetermined.  All functions are required.
+  </para>
+
+  <para>
+   The arguments can appear in any order, not only the one shown above.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>Compatibility</title>
+
+  <para>
+   There is no
+   <command>CREATE TABLESAMPLE METHOD</command> statement in the SQL
+   standard.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>See Also</title>
+
+  <simplelist type="inline">
+   <member><xref linkend="sql-droptablesamplemethod"></member>
+   <member><xref linkend="sql-select"></member>
+  </simplelist>
+ </refsect1>
+</refentry>

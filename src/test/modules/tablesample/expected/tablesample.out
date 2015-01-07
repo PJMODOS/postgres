@@ -1,0 +1,38 @@
+CREATE EXTENSION tsm_test;
+CREATE TABLE test_tsm AS SELECT md5(i::text) a, 0.5::float b FROM generate_series(1,10) g(i);
+SELECT * FROM test_tsm TABLESAMPLE tsm_test('b') REPEATABLE (1);
+                a                 |  b  
+----------------------------------+-----
+ c4ca4238a0b923820dcc509a6f75849b | 0.5
+ c81e728d9d4c2f636f067f89cc14862c | 0.5
+ a87ff679a2f3e71d9181a67b7542122c | 0.5
+ 1679091c5a880faf6fb5e6087eb1b2dc | 0.5
+ 8f14e45fceea167a5a36dedd4bea2543 | 0.5
+ d3d9446802a44259755d38e6d163e820 | 0.5
+(6 rows)
+
+CREATE VIEW test_tsm_v AS SELECT * FROM test_tsm TABLESAMPLE tsm_test('b') REPEATABLE (9999);
+SELECT * FROM test_tsm_v;
+                a                 |  b  
+----------------------------------+-----
+ c4ca4238a0b923820dcc509a6f75849b | 0.5
+ e4da3b7fbbce2345d7772b0674a318d5 | 0.5
+ 1679091c5a880faf6fb5e6087eb1b2dc | 0.5
+ 8f14e45fceea167a5a36dedd4bea2543 | 0.5
+ c9f0f895fb98ab9159f51fd0297e236d | 0.5
+(5 rows)
+
+DROP TABLESAMPLE METHOD tsm_test;
+ERROR:  cannot drop tablesample method tsm_test because extension tsm_test requires it
+HINT:  You can drop extension tsm_test instead.
+DROP EXTENSION tsm_test;
+ERROR:  cannot drop extension tsm_test because other objects depend on it
+DETAIL:  view test_tsm_v depends on tablesample method tsm_test
+HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+DROP EXTENSION tsm_test CASCADE;
+NOTICE:  drop cascades to view test_tsm_v
+SELECT * FROM pg_tablesample_method WHERE tsmname = 'tsm_test';
+ tsmname | tsmseqscan | tsmpagemode | tsminit | tsmnextblock | tsmnexttuple | tsmexaminetuple | tsmend | tsmreset | tsmcost 
+---------+------------+-------------+---------+--------------+--------------+-----------------+--------+----------+---------
+(0 rows)
+

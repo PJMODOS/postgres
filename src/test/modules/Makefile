@@ -11,6 +11,8 @@ SUBDIRS = \
 		  test_parser \
 		  test_rls_hooks \
 		  test_shm_mq \
+		  test_parser \
+		  tablesample \
 		  worker_spi
 
 all: submake-errcodes

@@ -1,0 +1,5 @@
+# tsm_test extension
+comment = 'test module for custom tablesample method'
+default_version = '1.0'
+module_pathname = '$libdir/tsm_test'
+relocatable = true

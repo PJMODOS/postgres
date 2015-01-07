@@ -77,7 +77,8 @@ typedef enum
 	DO_POST_DATA_BOUNDARY,
 	DO_EVENT_TRIGGER,
 	DO_REFRESH_MATVIEW,
-	DO_POLICY
+	DO_POLICY,
+	DO_TABLESAMPLE_METHOD
 } DumpableObjectType;
 
 typedef struct _dumpableObject
@@ -393,6 +394,13 @@ typedef struct _inhInfo
 	Oid			inhparent;		/* OID of its parent */
 } InhInfo;
 
+typedef struct _tsmInfo
+{
+	DumpableObject dobj;
+	bool		tsmseqscan;
+	bool		tsmpagemode;
+} TSMInfo;
+
 typedef struct _prsInfo
 {
 	DumpableObject dobj;
@@ -547,6 +555,7 @@ extern CastInfo *getCasts(Archive *fout, DumpOptions *dopt, int *numCasts);
 extern TransformInfo *getTransforms(Archive *fout, int *numTransforms);
 extern void getTableAttrs(Archive *fout, DumpOptions *dopt, TableInfo *tbinfo, int numTables);
 extern bool shouldPrintColumn(DumpOptions *dopt, TableInfo *tbinfo, int colno);
+extern TSMInfo *getTableSampleMethods(Archive *fout, int *numTSMs);
 extern TSParserInfo *getTSParsers(Archive *fout, int *numTSParsers);
 extern TSDictInfo *getTSDictionaries(Archive *fout, int *numTSDicts);
 extern TSTemplateInfo *getTSTemplates(Archive *fout, int *numTSTemplates);

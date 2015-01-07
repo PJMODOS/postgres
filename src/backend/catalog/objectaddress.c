@@ -44,6 +44,7 @@
 #include "catalog/pg_proc.h"
 #include "catalog/pg_policy.h"
 #include "catalog/pg_rewrite.h"
+#include "catalog/pg_tablesample_method.h"
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_transform.h"
 #include "catalog/pg_trigger.h"
@@ -436,7 +437,19 @@ static const ObjectPropertyType ObjectProperty[] =
 		Anum_pg_type_typacl,
 		ACL_KIND_TYPE,
 		true
-	}
+	},
+	{
+		TableSampleMethodRelationId,
+		TableSampleMethodOidIndexId,
+		TABLESAMPLEMETHODOID,
+		TABLESAMPLEMETHODNAME,
+		Anum_pg_tablesample_method_tsmname,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		-1,
+		true
+	},
 };
 
 /*
@@ -535,7 +548,9 @@ ObjectTypeMap[] =
 	/* OCLASS_EVENT_TRIGGER */
 	{ "event trigger", OBJECT_EVENT_TRIGGER },
 	/* OCLASS_POLICY */
-	{ "policy", OBJECT_POLICY }
+	{ "policy", OBJECT_POLICY },
+	/* OCLASS_TABLESAMPLEMETHOD */
+	{ "tablesample method", OBJECT_TABLESAMPLEMETHOD }
 };
 
 const ObjectAddress InvalidObjectAddress =
@@ -690,6 +705,7 @@ get_object_address(ObjectType objtype, List *objname, List *objargs,
 			case OBJECT_FDW:
 			case OBJECT_FOREIGN_SERVER:
 			case OBJECT_EVENT_TRIGGER:
+			case OBJECT_TABLESAMPLEMETHOD:
 				address = get_object_address_unqualified(objtype,
 														 objname, missing_ok);
 				break;
@@ -941,6 +957,9 @@ get_object_address_unqualified(ObjectType objtype,
 			case OBJECT_EVENT_TRIGGER:
 				msg = gettext_noop("event trigger name cannot be qualified");
 				break;
+			case OBJECT_TABLESAMPLEMETHOD:
+				msg = gettext_noop("tablesample method name cannot be qualified");
+				break;
 			default:
 				elog(ERROR, "unrecognized objtype: %d", (int) objtype);
 				msg = NULL;		/* placate compiler */
@@ -999,6 +1018,11 @@ get_object_address_unqualified(ObjectType objtype,
 		case OBJECT_EVENT_TRIGGER:
 			address.classId = EventTriggerRelationId;
 			address.objectId = get_event_trigger_oid(name, missing_ok);
+			address.objectSubId = 0;
+			break;
+		case OBJECT_TABLESAMPLEMETHOD:
+			address.classId = TableSampleMethodRelationId;
+			address.objectId = get_tablesample_method_oid(name, missing_ok);
 			address.objectSubId = 0;
 			break;
 		default:
@@ -2073,6 +2097,7 @@ check_object_ownership(Oid roleid, ObjectType objtype, ObjectAddress address,
 			break;
 		case OBJECT_TSPARSER:
 		case OBJECT_TSTEMPLATE:
+		case OBJECT_TABLESAMPLEMETHOD:
 			/* We treat these object types as being owned by superusers */
 			if (!superuser_arg(roleid))
 				ereport(ERROR,
@@ -3023,6 +3048,21 @@ getObjectDescription(const ObjectAddress *object)
 				break;
 			}
 
+		case OCLASS_TABLESAMPLEMETHOD:
+			{
+				HeapTuple	tup;
+
+				tup = SearchSysCache1(TABLESAMPLEMETHODOID,
+									  ObjectIdGetDatum(object->objectId));
+				if (!HeapTupleIsValid(tup))
+					elog(ERROR, "cache lookup failed for tablesample method %u",
+						 object->objectId);
+				appendStringInfo(&buffer, _("tablesample method %s"),
+					 NameStr(((Form_pg_tablesample_method) GETSTRUCT(tup))->tsmname));
+				ReleaseSysCache(tup);
+				break;
+			}
+
 		default:
 			appendStringInfo(&buffer, "unrecognized object %u %u %d",
 							 object->classId,
@@ -3498,6 +3538,10 @@ getObjectTypeDescription(const ObjectAddress *object)
 
 		case OCLASS_POLICY:
 			appendStringInfoString(&buffer, "policy");
+			break;
+
+		case OCLASS_TABLESAMPLEMETHOD:
+			appendStringInfoString(&buffer, "tablesample method");
 			break;
 
 		default:
@@ -4418,6 +4462,23 @@ getObjectIdentityParts(const ObjectAddress *object,
 				trigForm = (Form_pg_event_trigger) GETSTRUCT(tup);
 				appendStringInfoString(&buffer,
 							   quote_identifier(NameStr(trigForm->evtname)));
+				ReleaseSysCache(tup);
+				break;
+			}
+
+		case OCLASS_TABLESAMPLEMETHOD:
+			{
+				HeapTuple	tup;
+				Form_pg_tablesample_method tsmForm;
+
+				tup = SearchSysCache1(TABLESAMPLEMETHODOID,
+									  ObjectIdGetDatum(object->objectId));
+				if (!HeapTupleIsValid(tup))
+					elog(ERROR, "cache lookup failed for tablesample method %u",
+						 object->objectId);
+				tsmForm = (Form_pg_tablesample_method) GETSTRUCT(tup);
+				appendStringInfoString(&buffer,
+							   quote_identifier(NameStr(tsmForm->tsmname)));
 				ReleaseSysCache(tup);
 				break;
 			}
