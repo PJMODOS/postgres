@@ -127,6 +127,7 @@ pg_shdepend|t
 pg_shdescription|t
 pg_shseclabel|t
 pg_statistic|t
+pg_tablesample_method|t
 pg_tablespace|t
 pg_trigger|t
 pg_ts_config|t

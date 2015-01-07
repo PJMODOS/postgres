@@ -580,6 +580,14 @@ _outCustomScan(StringInfo str, const CustomScan *node)
 }
 
 static void
+_outSampleScan(StringInfo str, const SampleScan *node)
+{
+	WRITE_NODE_TYPE("SAMPLESCAN");
+
+	_outScanInfo(str, (const Scan *) node);
+}
+
+static void
 _outJoin(StringInfo str, const Join *node)
 {
 	WRITE_NODE_TYPE("JOIN");
@@ -2404,6 +2412,34 @@ _outCommonTableExpr(StringInfo str, const CommonTableExpr *node)
 }
 
 static void
+_outRangeTableSample(StringInfo str, const RangeTableSample *node)
+{
+	WRITE_NODE_TYPE("RANGETABLESAMPLE");
+
+	WRITE_NODE_FIELD(relation);
+	WRITE_STRING_FIELD(method);
+	WRITE_NODE_FIELD(repeatable);
+	WRITE_NODE_FIELD(args);
+}
+
+static void
+_outTableSampleClause(StringInfo str, const TableSampleClause *node)
+{
+	WRITE_NODE_TYPE("TABLESAMPLECLAUSE");
+
+	WRITE_OID_FIELD(tsmid);
+	WRITE_BOOL_FIELD(tsmseqscan);
+	WRITE_BOOL_FIELD(tsmpagemode);
+	WRITE_OID_FIELD(tsminit);
+	WRITE_OID_FIELD(tsmgetnext);
+	WRITE_OID_FIELD(tsmend);
+	WRITE_OID_FIELD(tsmreset);
+	WRITE_OID_FIELD(tsmcost);
+	WRITE_NODE_FIELD(repeatable);
+	WRITE_NODE_FIELD(args);
+}
+
+static void
 _outSetOperationStmt(StringInfo str, const SetOperationStmt *node)
 {
 	WRITE_NODE_TYPE("SETOPERATIONSTMT");
@@ -2433,6 +2469,7 @@ _outRangeTblEntry(StringInfo str, const RangeTblEntry *node)
 		case RTE_RELATION:
 			WRITE_OID_FIELD(relid);
 			WRITE_CHAR_FIELD(relkind);
+			WRITE_NODE_FIELD(tablesample);
 			break;
 		case RTE_SUBQUERY:
 			WRITE_NODE_FIELD(subquery);
@@ -2931,6 +2968,9 @@ _outNode(StringInfo str, const void *obj)
 			case T_CustomScan:
 				_outCustomScan(str, obj);
 				break;
+			case T_SampleScan:
+				_outSampleScan(str, obj);
+				break;
 			case T_Join:
 				_outJoin(str, obj);
 				break;
@@ -3271,6 +3311,12 @@ _outNode(StringInfo str, const void *obj)
 				break;
 			case T_CommonTableExpr:
 				_outCommonTableExpr(str, obj);
+				break;
+			case T_RangeTableSample:
+				_outRangeTableSample(str, obj);
+				break;
+			case T_TableSampleClause:
+				_outTableSampleClause(str, obj);
 				break;
 			case T_SetOperationStmt:
 				_outSetOperationStmt(str, obj);

@@ -305,6 +305,11 @@ DECLARE_UNIQUE_INDEX(pg_policy_oid_index, 3257, on pg_policy using btree(oid oid
 DECLARE_UNIQUE_INDEX(pg_policy_polrelid_polname_index, 3258, on pg_policy using btree(polrelid oid_ops, polname name_ops));
 #define PolicyPolrelidPolnameIndexId				3258
 
+DECLARE_UNIQUE_INDEX(pg_tablesample_method_name_index, 3291, on pg_tablesample_method using btree(tsmname name_ops));
+#define TableSampleMethodNameIndexId  3291
+DECLARE_UNIQUE_INDEX(pg_tablesample_method_oid_index, 3292, on pg_tablesample_method using btree(oid oid_ops));
+#define TableSampleMethodOidIndexId  3292
+
 /* last step of initialization script: build the indexes declared above */
 BUILD_INDICES
 

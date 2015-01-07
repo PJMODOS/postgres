@@ -3219,6 +3219,18 @@ raw_expression_tree_walker(Node *node,
 			return walker(((WithClause *) node)->ctes, context);
 		case T_CommonTableExpr:
 			return walker(((CommonTableExpr *) node)->ctequery, context);
+		case T_RangeTableSample:
+			{
+				RangeTableSample *rts = (RangeTableSample *) node;
+
+				if (walker(rts->relation, context))
+					return true;
+				if (walker(rts->repeatable, context))
+					return true;
+				if (walker(rts->args, context))
+					return true;
+			}
+			break;
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(node));

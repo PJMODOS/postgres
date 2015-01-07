@@ -732,6 +732,7 @@ ExplainPreScanNode(PlanState *planstate, Bitmapset **rels_used)
 		case T_WorkTableScan:
 		case T_ForeignScan:
 		case T_CustomScan:
+		case T_SampleScan:
 			*rels_used = bms_add_member(*rels_used,
 										((Scan *) plan)->scanrelid);
 			break;
@@ -957,6 +958,15 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			else
 				pname = sname;
 			break;
+		case T_SampleScan:
+			{
+				/* Fetch the tablesample method info from RTE */
+				RangeTblEntry *rte;
+				rte = rt_fetch(((SampleScan *) plan)->scanrelid, es->rtable);
+				custom_name = get_tablesample_method_name(rte->tablesample->tsmid);
+				pname = psprintf("Sample Scan (%s)", custom_name);
+			}
+			break;
 		case T_Material:
 			pname = sname = "Materialize";
 			break;
@@ -1074,6 +1084,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 		case T_WorkTableScan:
 		case T_ForeignScan:
 		case T_CustomScan:
+		case T_SampleScan:
 			ExplainScanTarget((Scan *) plan, es);
 			break;
 		case T_IndexScan:
@@ -1326,6 +1337,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 		case T_CteScan:
 		case T_WorkTableScan:
 		case T_SubqueryScan:
+		case T_SampleScan:
 			show_scan_qual(plan->qual, "Filter", planstate, ancestors, es);
 			if (plan->qual)
 				show_instrumentation_count("Rows Removed by Filter", 1,
@@ -2224,6 +2236,7 @@ ExplainTargetRel(Plan *plan, Index rti, ExplainState *es)
 		case T_TidScan:
 		case T_ForeignScan:
 		case T_CustomScan:
+		case T_SampleScan:
 		case T_ModifyTable:
 			/* Assert it's on a real relation */
 			Assert(rte->rtekind == RTE_RELATION);

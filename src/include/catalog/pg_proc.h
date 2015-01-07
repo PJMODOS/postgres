@@ -5182,6 +5182,27 @@ DESCR("rank of hypothetical row without gaps");
 DATA(insert OID = 3993 ( dense_rank_final	PGNSP PGUID 12 1 0 2276 0 f f f f f f i 2 0 20 "2281 2276" "{2281,2276}" "{i,v}" _null_ _null_	hypothetical_dense_rank_final _null_ _null_ _null_ ));
 DESCR("aggregate final function");
 
+DATA(insert OID = 3295 (  tsm_system_init		PGNSP PGUID 12 1 0 0 0 f f f f t f v 3 0 2278 "2281 23 700" _null_ _null_ _null_ _null_	tsm_system_init _null_ _null_ _null_ ));
+DESCR("tsm_system_init(internal)");
+DATA(insert OID = 3296 (  tsm_system_getnext	PGNSP PGUID 12 1 0 0 0 f f f f t f v 2 0 23 "2281 16" _null_ _null_ _null_ _null_	tsm_system_getnext _null_ _null_ _null_ ));
+DESCR("tsm_system_getnext(internal)");
+DATA(insert OID = 3298 (  tsm_system_end		PGNSP PGUID 12 1 0 0 0 f f f f t f v 1 0 2278 "2281" _null_ _null_ _null_ _null_	tsm_system_end _null_ _null_ _null_ ));
+DESCR("tsm_system_end(internal)");
+DATA(insert OID = 3299 (  tsm_system_reset		PGNSP PGUID 12 1 0 0 0 f f f f t f v 1 0 2278 "2281" _null_ _null_ _null_ _null_	tsm_system_reset _null_ _null_ _null_ ));
+DESCR("tsm_system_reset(internal)");
+DATA(insert OID = 3300 (  tsm_system_cost		PGNSP PGUID 12 1 0 0 0 f f f f t f v 7 0 2278 "2281 2281 2281 2281 2281 2281 2281" _null_ _null_ _null_ _null_	tsm_system_cost _null_ _null_ _null_ ));
+DESCR("tsm_system_cost(internal)");
+
+DATA(insert OID = 3301 (  tsm_bernoulli_init		PGNSP PGUID 12 1 0 0 0 f f f f t f v 3 0 2278 "2281 23 700" _null_ _null_ _null_ _null_	tsm_bernoulli_init _null_ _null_ _null_ ));
+DESCR("tsm_bernoulli_init(internal)");
+DATA(insert OID = 3302 (  tsm_bernoulli_getnext		PGNSP PGUID 12 1 0 0 0 f f f f t f v 2 0 23 "2281 16" _null_ _null_ _null_ _null_	tsm_bernoulli_getnext _null_ _null_ _null_ ));
+DESCR("tsm_bernoulli_nextblock(internal)");
+DATA(insert OID = 3304 (  tsm_bernoulli_end			PGNSP PGUID 12 1 0 0 0 f f f f t f v 1 0 2278 "2281" _null_ _null_ _null_ _null_	tsm_bernoulli_end _null_ _null_ _null_ ));
+DESCR("tsm_bernoulli_end(internal)");
+DATA(insert OID = 3306 (  tsm_bernoulli_reset		PGNSP PGUID 12 1 0 0 0 f f f f t f v 1 0 2278 "2281" _null_ _null_ _null_ _null_	tsm_bernoulli_reset _null_ _null_ _null_ ));
+DESCR("tsm_bernoulli_reset(internal)");
+DATA(insert OID = 3307 (  tsm_bernoulli_cost		PGNSP PGUID 12 1 0 0 0 f f f f t f v 7 0 2278 "2281 2281 2281 2281 2281 2281 2281" _null_ _null_ _null_ _null_	tsm_bernoulli_cost _null_ _null_ _null_ ));
+DESCR("tsm_bernoulli_cost(internal)");
 
 /*
  * Symbolic values for provolatile column: these indicate whether the result

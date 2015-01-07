@@ -1216,6 +1216,15 @@ typedef struct ScanState
 typedef ScanState SeqScanState;
 
 /*
+ * SampleScan
+ */
+typedef struct SampleScanState
+{
+	ScanState	ss;
+	struct TableSampleDesc *tsdesc;
+} SampleScanState;
+
+/*
  * These structs store information about index quals that don't have simple
  * constant right-hand sides.  See comments for ExecIndexBuildScanKeys()
  * for discussion.

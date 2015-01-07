@@ -630,6 +630,22 @@ _copyCustomScan(const CustomScan *from)
 }
 
 /*
+ * _copySampleScan
+ */
+static SampleScan *
+_copySampleScan(const SampleScan *from)
+{
+	SampleScan *newnode = makeNode(SampleScan);
+
+	/*
+	 * copy node superclass fields
+	 */
+	CopyScanFields((const Scan *) from, (Scan *) newnode);
+
+	return newnode;
+}
+
+/*
  * CopyJoinFields
  *
  *		This function copies the fields of the Join node.  It is used by
@@ -2015,6 +2031,7 @@ _copyRangeTblEntry(const RangeTblEntry *from)
 	COPY_SCALAR_FIELD(rtekind);
 	COPY_SCALAR_FIELD(relid);
 	COPY_SCALAR_FIELD(relkind);
+	COPY_NODE_FIELD(tablesample);
 	COPY_NODE_FIELD(subquery);
 	COPY_SCALAR_FIELD(security_barrier);
 	COPY_SCALAR_FIELD(jointype);
@@ -2143,6 +2160,38 @@ _copyCommonTableExpr(const CommonTableExpr *from)
 	COPY_NODE_FIELD(ctecoltypes);
 	COPY_NODE_FIELD(ctecoltypmods);
 	COPY_NODE_FIELD(ctecolcollations);
+
+	return newnode;
+}
+
+static RangeTableSample *
+_copyRangeTableSample(const RangeTableSample *from)
+{
+	RangeTableSample *newnode = makeNode(RangeTableSample);
+
+	COPY_NODE_FIELD(relation);
+	COPY_STRING_FIELD(method);
+	COPY_NODE_FIELD(repeatable);
+	COPY_NODE_FIELD(args);
+
+	return newnode;
+}
+
+static TableSampleClause *
+_copyTableSampleClause(const TableSampleClause *from)
+{
+	TableSampleClause *newnode = makeNode(TableSampleClause);
+
+	COPY_SCALAR_FIELD(tsmid);
+	COPY_SCALAR_FIELD(tsmseqscan);
+	COPY_SCALAR_FIELD(tsmpagemode);
+	COPY_SCALAR_FIELD(tsminit);
+	COPY_SCALAR_FIELD(tsmgetnext);
+	COPY_SCALAR_FIELD(tsmend);
+	COPY_SCALAR_FIELD(tsmreset);
+	COPY_SCALAR_FIELD(tsmcost);
+	COPY_NODE_FIELD(repeatable);
+	COPY_NODE_FIELD(args);
 
 	return newnode;
 }
@@ -4084,6 +4133,9 @@ copyObject(const void *from)
 		case T_CustomScan:
 			retval = _copyCustomScan(from);
 			break;
+		case T_SampleScan:
+			retval = _copySampleScan(from);
+			break;
 		case T_Join:
 			retval = _copyJoin(from);
 			break;
@@ -4731,6 +4783,12 @@ copyObject(const void *from)
 			break;
 		case T_CommonTableExpr:
 			retval = _copyCommonTableExpr(from);
+			break;
+		case T_RangeTableSample:
+			retval = _copyRangeTableSample(from);
+			break;
+		case T_TableSampleClause:
+			retval = _copyTableSampleClause(from);
 			break;
 		case T_FuncWithArgs:
 			retval = _copyFuncWithArgs(from);
