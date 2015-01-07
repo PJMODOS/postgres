@@ -97,6 +97,7 @@ static event_trigger_support_data event_trigger_support[] = {
 	{"SEQUENCE", true},
 	{"SERVER", true},
 	{"TABLE", true},
+	{"TABLESAMPLE METHOD", true},
 	{"TABLESPACE", false},
 	{"TRIGGER", true},
 	{"TEXT SEARCH CONFIGURATION", true},
@@ -1089,6 +1090,7 @@ EventTriggerSupportsObjectType(ObjectType obtype)
 		case OBJECT_SEQUENCE:
 		case OBJECT_TABCONSTRAINT:
 		case OBJECT_TABLE:
+		case OBJECT_TABLESAMPLEMETHOD:
 		case OBJECT_TRIGGER:
 		case OBJECT_TSCONFIGURATION:
 		case OBJECT_TSDICTIONARY:
@@ -1146,6 +1148,7 @@ EventTriggerSupportsObjectClass(ObjectClass objclass)
 		case OCLASS_DEFACL:
 		case OCLASS_EXTENSION:
 		case OCLASS_POLICY:
+		case OCLASS_TABLESAMPLEMETHOD:
 			return true;
 
 		case MAX_OCLASS:

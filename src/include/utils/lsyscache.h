@@ -152,6 +152,7 @@ extern void free_attstatsslot(Oid atttype,
 				  float4 *numbers, int nnumbers);
 extern char *get_namespace_name(Oid nspid);
 extern Oid	get_range_subtype(Oid rangeOid);
+extern Oid get_tablesample_method_oid(const char *tsmname, bool missing_ok);
 extern char *get_tablesample_method_name(Oid tsmid);
 
 #define type_is_array(typid)  (get_element_type(typid) != InvalidOid)

@@ -182,6 +182,7 @@ static void dumpSequenceData(Archive *fout, TableDataInfo *tdinfo);
 static void dumpIndex(Archive *fout, DumpOptions *dopt, IndxInfo *indxinfo);
 static void dumpConstraint(Archive *fout, DumpOptions *dopt, ConstraintInfo *coninfo);
 static void dumpTableConstraintComment(Archive *fout, DumpOptions *dopt, ConstraintInfo *coninfo);
+static void dumpTableSampleMethod(Archive *fout, DumpOptions *dopt, TSMInfo *tbinfo);
 static void dumpTSParser(Archive *fout, DumpOptions *dopt, TSParserInfo *prsinfo);
 static void dumpTSDictionary(Archive *fout, DumpOptions *dopt, TSDictInfo *dictinfo);
 static void dumpTSTemplate(Archive *fout, DumpOptions *dopt, TSTemplateInfo *tmplinfo);
@@ -7134,6 +7135,78 @@ getTableAttrs(Archive *fout, DumpOptions *dopt, TableInfo *tblinfo, int numTable
 }
 
 /*
+ * getTableSampleMethods:
+ *	  read all tablesample methods in the system catalogs and return them
+ *	  in the TSMInfo* structure
+ *
+ *	numTSMs is set to the number of tablesample methods read in
+ */
+TSMInfo *
+getTableSampleMethods(Archive *fout, int *numTSMs)
+{
+	PGresult   *res;
+	int			ntups;
+	int			i;
+	PQExpBuffer query;
+	TSMInfo	   *tsminfo;
+	int			i_tableoid,
+				i_oid,
+				i_tsmname,
+				i_tsmseqscan,
+				i_tsmpagemode;
+
+	/* Before 9.5, there were no tablesample methods */
+	if (fout->remoteVersion < 90500)
+	{
+		*numTSMs = 0;
+		return NULL;
+	}
+
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query,
+					  "SELECT tableoid, oid, tsmname, tsmseqscan, tsmpagemode "
+					  "FROM pg_catalog.pg_tablesample_method "
+					  "WHERE oid >= '%u'::pg_catalog.oid",
+					  FirstNormalObjectId);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+	ntups = PQntuples(res);
+	*numTSMs = ntups;
+
+	tsminfo = (TSMInfo *) pg_malloc(ntups * sizeof(TSMInfo));
+
+	i_tableoid = PQfnumber(res, "tableoid");
+	i_oid = PQfnumber(res, "oid");
+	i_tsmname = PQfnumber(res, "tsmname");
+	i_tsmseqscan = PQfnumber(res, "tsmseqscan");
+	i_tsmpagemode = PQfnumber(res, "tsmpagemode");
+
+	for (i = 0; i < ntups; i++)
+	{
+		tsminfo[i].dobj.objType = DO_TABLESAMPLE_METHOD;
+		tsminfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
+		tsminfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_oid));
+		AssignDumpId(&tsminfo[i].dobj);
+		tsminfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_tsmname));
+		tsminfo[i].dobj.namespace = NULL;
+		tsminfo[i].tsmseqscan = PQgetvalue(res, i, i_tsmseqscan)[0] == 't';
+		tsminfo[i].tsmpagemode = PQgetvalue(res, i, i_tsmpagemode)[0] == 't';
+
+		/* Decide whether we want to dump it */
+		selectDumpableObject(&(tsminfo[i].dobj));
+	}
+
+	PQclear(res);
+
+	destroyPQExpBuffer(query);
+
+	return tsminfo;
+}
+
+
+/*
  * Test whether a column should be printed as part of table's CREATE TABLE.
  * Column number is zero-based.
  *
@@ -8225,6 +8298,9 @@ dumpDumpableObject(Archive *fout, DumpOptions *dopt, DumpableObject *dobj)
 			break;
 		case DO_POLICY:
 			dumpPolicy(fout, dopt, (PolicyInfo *) dobj);
+			break;
+		case DO_TABLESAMPLE_METHOD:
+			dumpTableSampleMethod(fout, dopt, (TSMInfo *) dobj);
 			break;
 		case DO_PRE_DATA_BOUNDARY:
 		case DO_POST_DATA_BOUNDARY:
@@ -12226,6 +12302,106 @@ dumpAgg(Archive *fout, DumpOptions *dopt, AggInfo *agginfo)
 }
 
 /*
+ * dumpTableSampleMethod
+ *	  write the declaration of one user-defined tablesample method
+ */
+static void
+dumpTableSampleMethod(Archive *fout, DumpOptions *dopt, TSMInfo *tsminfo)
+{
+	PGresult   *res;
+	PQExpBuffer q;
+	PQExpBuffer delq;
+	PQExpBuffer labelq;
+	PQExpBuffer query;
+	char	   *tsminit;
+	char	   *tsmnextblock;
+	char	   *tsmnexttuple;
+	char	   *tsmexaminetuple;
+	char	   *tsmend;
+	char	   *tsmreset;
+	char	   *tsmcost;
+
+	/* Skip if not to be dumped */
+	if (!tsminfo->dobj.dump || dopt->dataOnly)
+		return;
+
+	q = createPQExpBuffer();
+	delq = createPQExpBuffer();
+	labelq = createPQExpBuffer();
+	query = createPQExpBuffer();
+
+	/* Make sure we are in proper schema */
+	selectSourceSchema(fout, "pg_catalog");
+
+	appendPQExpBuffer(query, "SELECT tsminit, tsmnextblock, "
+							 "tsmnexttuple, tsmexaminetuple, "
+							 "tsmend, tsmreset, tsmcost "
+							 "FROM pg_catalog.pg_tablesample_method "
+							 "WHERE oid = '%u'::pg_catalog.oid",
+							 tsminfo->dobj.catId.oid);
+
+	res = ExecuteSqlQueryForSingleRow(fout, query->data);
+
+	tsminit = PQgetvalue(res, 0, PQfnumber(res, "tsminit"));
+	tsmnexttuple = PQgetvalue(res, 0, PQfnumber(res, "tsmnexttuple"));
+	tsmnextblock = PQgetvalue(res, 0, PQfnumber(res, "tsmnextblock"));
+	tsmexaminetuple = PQgetvalue(res, 0, PQfnumber(res, "tsmexaminetuple"));
+	tsmend = PQgetvalue(res, 0, PQfnumber(res, "tsmend"));
+	tsmreset = PQgetvalue(res, 0, PQfnumber(res, "tsmreset"));
+	 tsmcost = PQgetvalue(res, 0, PQfnumber(res, "tsmcost"));
+
+	appendPQExpBuffer(q, "CREATE TABLESAMPLE METHOD %s (\n",
+					  fmtId(tsminfo->dobj.name));
+
+	appendPQExpBuffer(q, "    INIT = %s,\n", tsminit);
+	appendPQExpBuffer(q, "    NEXTTUPLE = %s,\n", tsmnexttuple);
+	appendPQExpBuffer(q, "    NEXTBLOCK = %s,\n", tsmnextblock);
+	appendPQExpBuffer(q, "    END = %s,\n", tsmend);
+	appendPQExpBuffer(q, "    RESET = %s,\n", tsmreset);
+	appendPQExpBuffer(q, "    COST = %s", tsmcost);
+
+	if (strcmp(tsmexaminetuple, "-") != 0)
+		appendPQExpBuffer(q, ",\n    EXAMINETUPLE = %s", tsmexaminetuple);
+
+	if (tsminfo->tsmseqscan)
+		appendPQExpBufferStr(q, ",\n    SEQSCAN = true");
+
+	if (tsminfo->tsmpagemode)
+		appendPQExpBufferStr(q, ",\n    PAGEMODE = true");
+
+	appendPQExpBufferStr(q, "\n);");
+
+	appendPQExpBuffer(delq, "DROP TABLESAMPLE METHOD %s",
+					  fmtId(tsminfo->dobj.name));
+
+	appendPQExpBuffer(labelq, "TABLESAMPLE METHOD %s",
+					  fmtId(tsminfo->dobj.name));
+
+	if (dopt->binary_upgrade)
+		binary_upgrade_extension_member(q, &tsminfo->dobj, labelq->data);
+
+	ArchiveEntry(fout, tsminfo->dobj.catId, tsminfo->dobj.dumpId,
+				 tsminfo->dobj.name,
+				 NULL,
+				 NULL,
+				 "",
+				 false, "TABLESAMPLE METHOD", SECTION_PRE_DATA,
+				 q->data, delq->data, NULL,
+				 NULL, 0,
+				 NULL, NULL);
+
+	/* Dump Parser Comments */
+	dumpComment(fout, dopt, labelq->data,
+				NULL, "",
+				tsminfo->dobj.catId, 0, tsminfo->dobj.dumpId);
+
+	PQclear(res);
+	destroyPQExpBuffer(q);
+	destroyPQExpBuffer(delq);
+	destroyPQExpBuffer(labelq);
+}
+
+/*
  * dumpTSParser
  *	  write out a single text search parser
  */
@@ -15659,6 +15835,7 @@ addBoundaryDependencies(DumpableObject **dobjs, int numObjs,
 			case DO_FDW:
 			case DO_FOREIGN_SERVER:
 			case DO_BLOB:
+			case DO_TABLESAMPLE_METHOD:
 				/* Pre-data objects: must come before the pre-data boundary */
 				addObjectDependency(preDataBound, dobj->dumpId);
 				break;

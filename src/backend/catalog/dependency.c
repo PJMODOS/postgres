@@ -46,6 +46,7 @@
 #include "catalog/pg_policy.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_rewrite.h"
+#include "catalog/pg_tablesample_method.h"
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_trigger.h"
 #include "catalog/pg_ts_config.h"
@@ -157,7 +158,8 @@ static const Oid object_classes[MAX_OCLASS] = {
 	DefaultAclRelationId,		/* OCLASS_DEFACL */
 	ExtensionRelationId,		/* OCLASS_EXTENSION */
 	EventTriggerRelationId,		/* OCLASS_EVENT_TRIGGER */
-	PolicyRelationId			/* OCLASS_POLICY */
+	PolicyRelationId,			/* OCLASS_POLICY */
+	TableSampleMethodRelationId			/* OCLASS_TABLESAMPLEMETHOD */
 };
 
 
@@ -1265,6 +1267,10 @@ doDeletion(const ObjectAddress *object, int flags)
 			RemovePolicyById(object->objectId);
 			break;
 
+		case OCLASS_TABLESAMPLEMETHOD:
+			RemoveTablesampleMethodById(object->objectId);
+			break;
+
 		default:
 			elog(ERROR, "unrecognized object class: %u",
 				 object->classId);
@@ -1794,6 +1800,10 @@ find_expr_references_walker(Node *node,
 				case RTE_RELATION:
 					add_object_address(OCLASS_CLASS, rte->relid, 0,
 									   context->addrs);
+					if (rte->tablesample)
+						add_object_address(OCLASS_TABLESAMPLEMETHOD,
+										   rte->tablesample->tsmid, 0,
+										   context->addrs);
 					break;
 				default:
 					break;
@@ -2373,6 +2383,9 @@ getObjectClass(const ObjectAddress *object)
 
 		case PolicyRelationId:
 			return OCLASS_POLICY;
+
+		case TableSampleMethodRelationId:
+			return OCLASS_TABLESAMPLEMETHOD;
 	}
 
 	/* shouldn't get here */

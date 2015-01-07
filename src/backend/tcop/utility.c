@@ -23,6 +23,7 @@
 #include "access/xlog.h"
 #include "catalog/catalog.h"
 #include "catalog/namespace.h"
+#include "catalog/pg_tablesample_method.h"
 #include "catalog/toasting.h"
 #include "commands/alter.h"
 #include "commands/async.h"
@@ -1136,6 +1137,11 @@ ProcessUtilitySlow(Node *parsetree,
 							Assert(stmt->args == NIL);
 							DefineCollation(stmt->defnames, stmt->definition);
 							break;
+						case OBJECT_TABLESAMPLEMETHOD:
+							Assert(stmt->args == NIL);
+							Assert(list_length(stmt->defnames) == 1);
+							DefineTablesampleMethod(stmt->defnames, stmt->definition);
+							break;
 						default:
 							elog(ERROR, "unrecognized define stmt type: %d",
 								 (int) stmt->kind);
@@ -2004,6 +2010,9 @@ CreateCommandTag(Node *parsetree)
 				case OBJECT_POLICY:
 					tag = "DROP POLICY";
 					break;
+				case OBJECT_TABLESAMPLEMETHOD:
+					tag = "DROP TABLESAMPLE METHOD";
+					break;
 				default:
 					tag = "???";
 			}
@@ -2099,6 +2108,9 @@ CreateCommandTag(Node *parsetree)
 					break;
 				case OBJECT_COLLATION:
 					tag = "CREATE COLLATION";
+					break;
+				case OBJECT_TABLESAMPLEMETHOD:
+					tag = "CREATE TABLESAMPLE METHOD";
 					break;
 				default:
 					tag = "???";

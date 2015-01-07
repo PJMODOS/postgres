@@ -65,7 +65,17 @@ typedef FormData_pg_tablesample_method *Form_pg_tablesample_method;
 
 DATA(insert OID = 3293 ( system false true tsm_system_init tsm_system_getnext tsm_system_end tsm_system_reset tsm_system_cost ));
 DESCR("SYSTEM table sampling method");
+#define TABLESAMPLE_METHOD_SYSTEM_OID 3293
 DATA(insert OID = 3294 ( bernoulli true false tsm_bernoulli_init tsm_bernoulli_getnext tsm_bernoulli_end tsm_bernoulli_reset tsm_bernoulli_cost ));
 DESCR("BERNOULLI table sampling method");
+#define TABLESAMPLE_METHOD_BERNOULLI_OID 3294
+
+/* ----------------
+ *		functions for manipulation of pg_tablesample_method
+ * ----------------
+ */
+
+extern ObjectAddress DefineTablesampleMethod(List *names, List *parameters);
+extern void RemoveTablesampleMethodById(Oid tsmoid);
 
 #endif   /* PG_TABLESAMPLE_METHOD_H */

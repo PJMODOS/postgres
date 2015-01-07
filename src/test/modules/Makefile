@@ -9,7 +9,8 @@ SUBDIRS = \
 		  worker_spi \
 		  dummy_seclabel \
 		  test_shm_mq \
-		  test_parser
+		  test_parser \
+		  tablesample
 
 all: submake-errcodes
 

@@ -2915,6 +2915,37 @@ get_range_subtype(Oid rangeOid)
 /*				---------- PG_TABLESAMPLE_METHOD CACHE ----------			 */
 
 /*
+ * get_tablesample_method_oid - given a tablesample method name,
+ * look up the OID
+ *
+ * If missing_ok is false, throw an error if tablesample method name not found.
+ * If true, just return InvalidOid.
+ */
+Oid
+get_tablesample_method_oid(const char *tsmname, bool missing_ok)
+{
+	Oid			result;
+	HeapTuple	tuple;
+
+	tuple = SearchSysCache1(TABLESAMPLEMETHODNAME, PointerGetDatum(tsmname));
+	if (HeapTupleIsValid(tuple))
+	{
+		result = HeapTupleGetOid(tuple);
+		ReleaseSysCache(tuple);
+	}
+	else
+		result = InvalidOid;
+
+	if (!OidIsValid(result) && !missing_ok)
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("tablesample method \"%s\" does not exist",
+						tsmname)));
+
+	return result;
+}
+
+/*
  * get_tablesample_method_name - given a tablesample method OID,
  * look up the name or NULL if not found
  */

@@ -106,6 +106,7 @@
    &createServer;
    &createTable;
    &createTableAs;
+   &createTablesampleMethod;
    &createTableSpace;
    &createTSConfig;
    &createTSDictionary;
@@ -147,6 +148,7 @@
    &dropSequence;
    &dropServer;
    &dropTable;
+   &dropTablesampleMethod;
    &dropTableSpace;
    &dropTSConfig;
    &dropTSDictionary;
