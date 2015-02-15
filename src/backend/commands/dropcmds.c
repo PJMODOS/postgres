@@ -437,6 +437,10 @@ does_not_exist_skipping(ObjectType objtype, List *objname, List *objargs)
 				}
 			}
 			break;
+		case OBJECT_SEQAM:
+			msg = gettext_noop("sequence access method \"%s\" does not exist, skipping");
+			name = NameListToString(objname);
+			break;
 		default:
 			elog(ERROR, "unexpected object type (%d)", (int) objtype);
 			break;

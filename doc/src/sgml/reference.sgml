@@ -102,6 +102,7 @@
    &createRole;
    &createRule;
    &createSchema;
+   &createSeqAM;
    &createSequence;
    &createServer;
    &createTable;
@@ -145,6 +146,7 @@
    &dropRole;
    &dropRule;
    &dropSchema;
+   &dropSeqAM;
    &dropSequence;
    &dropServer;
    &dropTable;

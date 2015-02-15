@@ -1,0 +1,163 @@
+<!--
+doc/src/sgml/ref/create_seqam.sgml
+PostgreSQL documentation
+-->
+
+<refentry id="SQL-CREATESEQAM">
+ <indexterm zone="sql-createseqam">
+  <primary>CREATE ACCESS METHOD FOR SEQUENCES</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>CREATE ACCESS METHOD FOR SEQUENCES</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>CREATE ACCESS METHOD FOR SEQUENCES</refname>
+  <refpurpose>define custom sequence access method</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+CREATE ACCESS METHOD FOR SEQUENCES <replaceable class="parameter">name</replaceable> (
+    RELOPTIONS = <replaceable class="parameter">reloptions_function</replaceable> ,
+    INIT = <replaceable class="parameter">init_function</replaceable> ,
+    ALLOC = <replaceable class="parameter">alloc_function</replaceable> ,
+    SETVAL = <replaceable class="parameter">setval_function</replaceable> ,
+    GETSTATE = <replaceable class="parameter">getstate_function</replaceable>,
+    SETSTATE = <replaceable class="parameter">setstate_function</replaceable>
+)
+</synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+
+  <para>
+   <command>CREATE ACCESS METHOD FOR SEQUENCES</command> creates a sequence
+   access method. A sequence access method changes how values for SEQUENCEs
+   are generated.
+  </para>
+
+  <para>
+   You must be a superuser to use <command>CREATE ACCESS METHOD FOR SEQUENCES</command>.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>Parameters</title>
+
+  <variablelist>
+   <varlistentry>
+    <term><replaceable class="parameter">name</replaceable></term>
+    <listitem>
+     <para>
+      The name of the sequence access method to be created. This name must be
+      unique within the database.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">reloptions_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the function for parsing reloptions for the sequence access
+      method.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">init_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the init function for the sequence access method.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">alloc_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the function which allocates new sequence id.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">setval_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the function which handles the <function>setval</function>
+      function call.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">getstate_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the function used for dumping current state of the sequence
+      to a string. This function will be called by
+      <application>pg_dump</application>.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">setstate_function</replaceable></term>
+    <listitem>
+     <para>
+      The name of the function used for restoring the state of the sequence
+      from a string. Calls to this function will be present in a database dumps
+      created by <application>pg_dump</application>.
+     </para>
+    </listitem>
+   </varlistentry>
+
+  </variablelist>
+
+  <para>
+   The function names can be schema-qualified if necessary.  Argument types
+   are not given, since the argument list for each type of function is
+   predetermined.  All functions are required.
+  </para>
+
+  <para>
+   The arguments can appear in any order, not only the one shown above.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>Examples</title>
+
+  <para>
+   See the <filename>contrib/gapless_seq</> for example on how to write new
+   sequence access methods and how to use this command.
+  </para>
+
+ </refsect1>
+
+ <refsect1>
+  <title>Compatibility</title>
+
+  <para>
+   There is no
+   <command>CREATE ACCESS METHOD FOR SEQUENCES</command> statement in the SQL
+   standard.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>See Also</title>
+
+  <simplelist type="inline">
+   <member><xref linkend="sql-dropseqam"></member>
+  </simplelist>
+ </refsect1>
+</refentry>

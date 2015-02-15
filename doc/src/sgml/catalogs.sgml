@@ -5554,6 +5554,12 @@
    installed on the system.
   </para>
 
+  <para>
+   The contents of this catalog can be manipulated by
+   <command>CREATE ACCESS METHOD FOR SEQUENCES</> and
+   <command>DROP ACCESS METHOD FOR SEQUENCES</>.
+  </para>
+
   <table>
    <title><structname>pg_seqam</> Columns</title>
 

@@ -179,6 +179,7 @@ static void dumpEventTrigger(Archive *fout, DumpOptions *dopt, EventTriggerInfo 
 static void dumpTable(Archive *fout, DumpOptions *dopt, TableInfo *tbinfo);
 static void dumpTableSchema(Archive *fout, DumpOptions *dopt, TableInfo *tbinfo);
 static void dumpAttrDef(Archive *fout, DumpOptions *dopt, AttrDefInfo *adinfo);
+static void dumpSeqAM(Archive *fout, DumpOptions *dopt, SeqAMInfo *tbinfo);
 static void dumpSequence(Archive *fout, DumpOptions *dopt, TableInfo *tbinfo);
 static void dumpSequenceData(Archive *fout, TableDataInfo *tdinfo);
 static void dumpIndex(Archive *fout, DumpOptions *dopt, IndxInfo *indxinfo);
@@ -5996,6 +5997,71 @@ getRules(Archive *fout, int *numRules)
 }
 
 /*
+ * getSeqAMs:
+ *	  read all sequence access methods in the system catalogs and return them
+ *	  in the SeqAMInfo* structure
+ *
+ *	numSeqAMs is set to the number of access methods read in
+ */
+SeqAMInfo *
+getSeqAMs(Archive *fout, int *numSeqAMs)
+{
+	PGresult   *res;
+	int			ntups;
+	int			i;
+	PQExpBuffer query;
+	SeqAMInfo  *seqminfo;
+	int			i_tableoid,
+				i_oid,
+				i_seqamname;
+
+	/* Before 9.5, there were no sequence access methods */
+	if (fout->remoteVersion < 90500)
+	{
+		*numSeqAMs = 0;
+		return NULL;
+	}
+
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query,
+					  "SELECT tableoid, oid, seqamname "
+					  "FROM pg_catalog.pg_seqam "
+					  "WHERE oid != '%u'::pg_catalog.oid",
+					  LOCAL_SEQAM_OID);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+	ntups = PQntuples(res);
+	*numSeqAMs = ntups;
+
+	seqminfo = (SeqAMInfo *) pg_malloc(ntups * sizeof(SeqAMInfo));
+
+	i_tableoid = PQfnumber(res, "tableoid");
+	i_oid = PQfnumber(res, "oid");
+	i_seqamname = PQfnumber(res, "seqamname");
+
+	for (i = 0; i < ntups; i++)
+	{
+		seqminfo[i].dobj.objType = DO_SEQAM;
+		seqminfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
+		seqminfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_oid));
+		AssignDumpId(&seqminfo[i].dobj);
+		seqminfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_seqamname));
+		seqminfo[i].dobj.namespace = NULL;
+
+		/* Decide whether we want to dump it */
+		selectDumpableObject(&(seqminfo[i].dobj));
+	}
+
+	PQclear(res);
+
+	destroyPQExpBuffer(query);
+
+	return seqminfo;
+}
+
+/*
  * getTriggers
  *	  get information about every trigger on a dumpable table
  *
@@ -8352,6 +8418,9 @@ dumpDumpableObject(Archive *fout, DumpOptions *dopt, DumpableObject *dobj)
 			break;
 		case DO_POLICY:
 			dumpPolicy(fout, dopt, (PolicyInfo *) dobj);
+			break;
+		case DO_SEQAM:
+			dumpSeqAM(fout, dopt, (SeqAMInfo *) dobj);
 			break;
 		case DO_PRE_DATA_BOUNDARY:
 		case DO_POST_DATA_BOUNDARY:
@@ -14810,6 +14879,90 @@ findLastBuiltinOid_V70(Archive *fout)
 }
 
 /*
+ * dumpSeqAM
+ *	  write the declaration of one user-defined sequence access method
+ */
+static void
+dumpSeqAM(Archive *fout, DumpOptions *dopt, SeqAMInfo *seqaminfo)
+{
+	PGresult   *res;
+	PQExpBuffer q;
+	PQExpBuffer delq;
+	PQExpBuffer labelq;
+	PQExpBuffer query;
+	char	   *seqamreloptions;
+	char	   *seqaminit;
+	char	   *seqamalloc;
+	char	   *seqamsetval;
+	char	   *seqamgetstate;
+	char	   *seqamsetstate;
+
+	/* Skip if not to be dumped */
+	if (!seqaminfo->dobj.dump || dopt->dataOnly)
+		return;
+
+	q = createPQExpBuffer();
+	delq = createPQExpBuffer();
+	labelq = createPQExpBuffer();
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query, "SELECT seqamreloptions, seqaminit, "
+							 "seqamalloc, seqamsetval, "
+							 "seqamgetstate, seqamsetstate "
+							 "FROM pg_catalog.pg_seqam "
+							 "WHERE oid = '%u'::pg_catalog.oid",
+							 seqaminfo->dobj.catId.oid);
+
+	res = ExecuteSqlQueryForSingleRow(fout, query->data);
+
+	seqamreloptions = PQgetvalue(res, 0, PQfnumber(res, "seqamreloptions"));
+	seqaminit = PQgetvalue(res, 0, PQfnumber(res, "seqaminit"));
+	seqamalloc = PQgetvalue(res, 0, PQfnumber(res, "seqamalloc"));
+	seqamsetval = PQgetvalue(res, 0, PQfnumber(res, "seqamsetval"));
+	seqamgetstate = PQgetvalue(res, 0, PQfnumber(res, "seqamgetstate"));
+	seqamsetstate = PQgetvalue(res, 0, PQfnumber(res, "seqamsetstate"));
+
+	appendPQExpBuffer(q, "CREATE ACCESS METHOD FOR SEQUENCES %s AS (\n",
+					  fmtId(seqaminfo->dobj.name));
+
+	appendPQExpBuffer(q, "    RELOPTIONS = %s,\n", seqamreloptions);
+	appendPQExpBuffer(q, "    INIT = %s,\n", seqaminit);
+	appendPQExpBuffer(q, "    ALLOC = %s,\n", seqamalloc);
+	appendPQExpBuffer(q, "    SETVAL = %s,\n", seqamsetval);
+	appendPQExpBuffer(q, "    GETSTATE = %s,\n", seqamgetstate);
+	appendPQExpBuffer(q, "    SETSTATE = %s\n);\n", seqamsetstate);
+
+	appendPQExpBuffer(delq, "DROP ACCESS METHOD FOR SEQUENCES %s",
+					  fmtId(seqaminfo->dobj.name));
+
+	appendPQExpBuffer(labelq, "ACCESS METHOD FOR SEQUENCES %s",
+					  fmtId(seqaminfo->dobj.name));
+
+	if (dopt->binary_upgrade)
+		binary_upgrade_extension_member(q, &seqaminfo->dobj, labelq->data);
+
+	ArchiveEntry(fout, seqaminfo->dobj.catId, seqaminfo->dobj.dumpId,
+				 seqaminfo->dobj.name,
+				 NULL,
+				 NULL,
+				 "",
+				 false, "ACCESS METHOD FOR SEQUENCES", SECTION_PRE_DATA,
+				 q->data, delq->data, NULL,
+				 NULL, 0,
+				 NULL, NULL);
+
+	/* Dump Parser Comments */
+	dumpComment(fout, dopt, labelq->data,
+				NULL, "",
+				seqaminfo->dobj.catId, 0, seqaminfo->dobj.dumpId);
+
+	PQclear(res);
+	destroyPQExpBuffer(q);
+	destroyPQExpBuffer(delq);
+	destroyPQExpBuffer(labelq);
+}
+
+/*
  * dumpSequence
  *	  write the declaration (not data) of one user-defined sequence
  */
@@ -14911,8 +15064,8 @@ dumpSequence(Archive *fout, DumpOptions *dopt, TableInfo *tbinfo)
 	{
 		PGresult   *res2;
 
-		printfPQExpBuffer(query, "SELECT a.seqamname\n"
-								 "FROM pg_catalog.pg_seqam a, pg_catalog.pg_class c\n"
+		printfPQExpBuffer(query, "SELECT a.seqamname "
+								 "FROM pg_catalog.pg_seqam a, pg_catalog.pg_class c "
 								 "WHERE c.relam = a.oid AND c.oid = %u",
 						  tbinfo->dobj.catId.oid);
 
@@ -16017,6 +16170,7 @@ addBoundaryDependencies(DumpableObject **dobjs, int numObjs,
 			case DO_FOREIGN_SERVER:
 			case DO_TRANSFORM:
 			case DO_BLOB:
+			case DO_SEQAM:
 				/* Pre-data objects: must come before the pre-data boundary */
 				addObjectDependency(preDataBound, dobj->dumpId);
 				break;

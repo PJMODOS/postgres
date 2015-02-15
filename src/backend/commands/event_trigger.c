@@ -72,6 +72,7 @@ typedef enum
 } event_trigger_command_tag_check_result;
 
 static event_trigger_support_data event_trigger_support[] = {
+	{"ACCESS METHOD FOR SEQUENCES", true},
 	{"AGGREGATE", true},
 	{"CAST", true},
 	{"CONSTRAINT", true},
@@ -1088,6 +1089,7 @@ EventTriggerSupportsObjectType(ObjectType obtype)
 		case OBJECT_POLICY:
 		case OBJECT_RULE:
 		case OBJECT_SCHEMA:
+		case OBJECT_SEQAM:
 		case OBJECT_SEQUENCE:
 		case OBJECT_TABCONSTRAINT:
 		case OBJECT_TABLE:
@@ -1150,6 +1152,7 @@ EventTriggerSupportsObjectClass(ObjectClass objclass)
 		case OCLASS_DEFACL:
 		case OCLASS_EXTENSION:
 		case OCLASS_POLICY:
+		case OCLASS_SEQAM:
 			return true;
 
 		case MAX_OCLASS:

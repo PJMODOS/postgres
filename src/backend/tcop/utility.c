@@ -18,6 +18,7 @@
 
 #include "access/htup_details.h"
 #include "access/reloptions.h"
+#include "access/seqam.h"
 #include "access/twophase.h"
 #include "access/xact.h"
 #include "access/xlog.h"
@@ -1139,6 +1140,11 @@ ProcessUtilitySlow(Node *parsetree,
 							Assert(stmt->args == NIL);
 							DefineCollation(stmt->defnames, stmt->definition);
 							break;
+						case OBJECT_SEQAM:
+							Assert(list_length(stmt->defnames) == 1);
+							Assert(stmt->args == NIL);
+							DefineSeqAM(stmt->defnames, stmt->definition);
+							break;
 						default:
 							elog(ERROR, "unrecognized define stmt type: %d",
 								 (int) stmt->kind);
@@ -2014,6 +2020,9 @@ CreateCommandTag(Node *parsetree)
 				case OBJECT_TRANSFORM:
 					tag = "DROP TRANSFORM";
 					break;
+				case OBJECT_SEQAM:
+					tag = "DROP ACCESS METHOD FOR SEQUENCES";
+					break;
 				default:
 					tag = "???";
 			}
@@ -2109,6 +2118,9 @@ CreateCommandTag(Node *parsetree)
 					break;
 				case OBJECT_COLLATION:
 					tag = "CREATE COLLATION";
+					break;
+				case OBJECT_SEQAM:
+					tag = "CREATE ACCESS METHOD FOR SEQUENCES";
 					break;
 				default:
 					tag = "???";

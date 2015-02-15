@@ -77,7 +77,8 @@ typedef enum
 	DO_POST_DATA_BOUNDARY,
 	DO_EVENT_TRIGGER,
 	DO_REFRESH_MATVIEW,
-	DO_POLICY
+	DO_POLICY,
+	DO_SEQAM
 } DumpableObjectType;
 
 typedef struct _dumpableObject
@@ -304,6 +305,11 @@ typedef struct _ruleInfo
 	char	   *reloptions;		/* options specified by WITH (...) */
 	/* reloptions is only set if we need to dump the options with the rule */
 } RuleInfo;
+
+typedef struct _seqamInfo
+{
+	DumpableObject dobj;
+} SeqAMInfo;
 
 typedef struct _triggerInfo
 {
@@ -561,5 +567,6 @@ extern void getExtensionMembership(Archive *fout, DumpOptions *dopt, ExtensionIn
 					   int numExtensions);
 extern EventTriggerInfo *getEventTriggers(Archive *fout, int *numEventTriggers);
 extern void getPolicies(Archive *fout, TableInfo tblinfo[], int numTables);
+extern SeqAMInfo *getSeqAMs(Archive *fout, int *numSeqAMs);
 
 #endif   /* PG_DUMP_H */

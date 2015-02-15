@@ -16,6 +16,7 @@
 
 #include "access/htup_details.h"
 #include "access/xact.h"
+#include "access/seqam.h"
 #include "catalog/dependency.h"
 #include "catalog/heap.h"
 #include "catalog/index.h"
@@ -158,7 +159,8 @@ static const Oid object_classes[MAX_OCLASS] = {
 	DefaultAclRelationId,		/* OCLASS_DEFACL */
 	ExtensionRelationId,		/* OCLASS_EXTENSION */
 	EventTriggerRelationId,		/* OCLASS_EVENT_TRIGGER */
-	PolicyRelationId			/* OCLASS_POLICY */
+	PolicyRelationId,			/* OCLASS_POLICY */
+	SeqAccessMethodRelationId	/* OCLASS_SEQAM */
 };
 
 
@@ -1268,6 +1270,10 @@ doDeletion(const ObjectAddress *object, int flags)
 
 		case OCLASS_TRANSFORM:
 			DropTransformById(object->objectId);
+			break;
+
+		case OCLASS_SEQAM:
+			RemoveSeqAMById(object->objectId);
 			break;
 
 		default:
@@ -2381,6 +2387,9 @@ getObjectClass(const ObjectAddress *object)
 
 		case TransformRelationId:
 			return OCLASS_TRANSFORM;
+
+		case SeqAccessMethodRelationId:
+			return OCLASS_SEQAM;
 	}
 
 	/* shouldn't get here */

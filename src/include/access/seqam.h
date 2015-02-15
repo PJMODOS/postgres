@@ -28,6 +28,9 @@ typedef struct SequenceHandle SequenceHandle;
 
 extern char *serial_seqam;
 
+extern Oid DefineSeqAM(List *names, List *definition);
+extern void RemoveSeqAMById(Oid seqamoid);
+
 extern HeapTuple seqam_init(Relation seqrel, HeapTuple tuple,
 							int64 restart_value, bool restart_requested,
 							bool is_init);

@@ -67,8 +67,20 @@
 #include "access/seqam.h"
 #include "access/transam.h"
 #include "access/xact.h"
+#include "catalog/dependency.h"
+#include "catalog/objectaccess.h"
+#include "catalog/objectaddress.h"
+#include "catalog/indexing.h"
+#include "catalog/pg_proc.h"
 #include "catalog/pg_seqam.h"
+#include "catalog/pg_type.h"
+#include "commands/defrem.h"
+#include "miscadmin.h"
+#include "parser/parse_func.h"
+#include "parser/parse_type.h"
+#include "utils/builtins.h"
 #include "utils/guc.h"
+#include "utils/lsyscache.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
 
@@ -274,6 +286,302 @@ check_serial_seqam(char **newval, void **extra, GucSource source)
 	return true;
 }
 
+
+/*
+ * Find seqam function by name and validate it.
+ */
+static Datum
+get_seqam_func(DefElem *defel, int attnum)
+{
+	List	   *funcName = defGetQualifiedName(defel);
+	Oid			typeId[6];
+	Oid			retTypeId;
+	int			nargs;
+	Oid			procOid;
+
+	typeId[0] = INTERNALOID;
+
+	switch (attnum)
+	{
+		case Anum_pg_seqam_seqamreloptions:
+			nargs = 2;
+			typeId[1] = BOOLOID;
+			retTypeId = BYTEAOID;
+			break;
+
+		case Anum_pg_seqam_seqaminit:
+			nargs = 5;
+			typeId[1] = INTERNALOID;
+			typeId[2] = INT8OID;
+			typeId[3] = BOOLOID;
+			typeId[4] = BOOLOID;
+			retTypeId = BYTEAOID;
+			break;
+
+		case Anum_pg_seqam_seqamalloc:
+			nargs = 4;
+			typeId[1] = INTERNALOID;
+			typeId[2] = INT8OID;
+			typeId[3] = INTERNALOID;
+			retTypeId = INT8OID;
+			break;
+
+		case Anum_pg_seqam_seqamsetval:
+			nargs = 3;
+			typeId[1] = INTERNALOID;
+			typeId[2] = INT8OID;
+			retTypeId = VOIDOID;
+			break;
+
+		case Anum_pg_seqam_seqamgetstate:
+			nargs = 2;
+			typeId[1] = INTERNALOID;
+			retTypeId = TEXTARRAYOID;
+			break;
+
+		case Anum_pg_seqam_seqamsetstate:
+			nargs = 3;
+			typeId[1] = INTERNALOID;
+			typeId[2] = TEXTARRAYOID;
+			retTypeId = VOIDOID;
+			break;
+
+		default:
+			/* should not be here */
+			elog(ERROR, "unrecognized attribute for sequence access method: %d",
+				 attnum);
+			nargs = 0;			/* keep compiler quiet */
+	}
+
+	procOid = LookupFuncName(funcName, nargs, typeId, false);
+	if (get_func_rettype(procOid) != retTypeId)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+				 errmsg("function %s should return type %s",
+						func_signature_string(funcName, nargs, NIL, typeId),
+						format_type_be(retTypeId))));
+
+	return ObjectIdGetDatum(procOid);
+}
+
+
+/*
+ * make pg_depend entries for a new pg_seqam entry
+ */
+static void
+makeSeqAMDependencies(HeapTuple tuple)
+{
+	Form_pg_seqam	seqam = (Form_pg_seqam) GETSTRUCT(tuple);
+	ObjectAddress	myself,
+					referenced;
+
+
+	myself.classId = SeqAccessMethodRelationId;
+	myself.objectId = HeapTupleGetOid(tuple);
+	myself.objectSubId = 0;
+
+	/* Dependency on extension. */
+	recordDependencyOnCurrentExtension(&myself, false);
+
+	/* Dependencies on functions. */
+	referenced.classId = ProcedureRelationId;
+	referenced.objectSubId = 0;
+
+	referenced.objectId = seqam->seqamreloptions;
+	recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
+
+	referenced.objectId = seqam->seqaminit;
+	recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
+
+	referenced.objectId = seqam->seqamalloc;
+	recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
+
+	referenced.objectId = seqam->seqamsetval;
+	recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
+
+	referenced.objectId = seqam->seqamgetstate;
+	recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
+
+	referenced.objectId = seqam->seqamsetstate;
+	recordDependencyOn(&myself, &referenced, DEPENDENCY_NORMAL);
+}
+
+/*
+ * Create a sequence access method record in pg_seqam catalog.
+ *
+ * Only superusers can create a sequence access methods.
+ */
+Oid
+DefineSeqAM(List *names, List* definition)
+{
+	char	   *seqamname = strVal(linitial(names));
+	Oid			seqamoid;
+	ListCell   *pl;
+	Relation	rel;
+	Datum		values[Natts_pg_seqam];
+	bool		nulls[Natts_pg_seqam];
+	HeapTuple	tuple;
+
+	/* Must be super user. */
+	if (!superuser())
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("permission denied to create sequence access method \"%s\"",
+						seqamname),
+				 errhint("Must be superuser to create a sequence access method.")));
+
+	/* Must not already exist. */
+	seqamoid = get_seqam_oid(seqamname, true);
+	if (OidIsValid(seqamoid))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("sequence access method \"%s\" already exists",
+						seqamname)));
+
+	/* Initialize the values. */
+	memset(values, 0, sizeof(values));
+	memset(nulls, false, sizeof(nulls));
+
+	values[Anum_pg_seqam_seqamname - 1] =
+		DirectFunctionCall1(namein, CStringGetDatum(seqamname));
+
+	/*
+	 * Loop over the definition list and extract the information we need.
+	 */
+	foreach(pl, definition)
+	{
+		DefElem    *defel = (DefElem *) lfirst(pl);
+
+		if (pg_strcasecmp(defel->defname, "reloptions") == 0)
+		{
+			values[Anum_pg_seqam_seqamreloptions - 1] =
+				get_seqam_func(defel, Anum_pg_seqam_seqamreloptions);
+		}
+		else if (pg_strcasecmp(defel->defname, "init") == 0)
+		{
+			values[Anum_pg_seqam_seqaminit - 1] =
+				get_seqam_func(defel, Anum_pg_seqam_seqaminit);
+		}
+		else if (pg_strcasecmp(defel->defname, "alloc") == 0)
+		{
+			values[Anum_pg_seqam_seqamalloc - 1] =
+				get_seqam_func(defel, Anum_pg_seqam_seqamalloc);
+		}
+		else if (pg_strcasecmp(defel->defname, "setval") == 0)
+		{
+			values[Anum_pg_seqam_seqamsetval - 1] =
+				get_seqam_func(defel, Anum_pg_seqam_seqamsetval);
+		}
+		else if (pg_strcasecmp(defel->defname, "getstate") == 0)
+		{
+			values[Anum_pg_seqam_seqamgetstate - 1] =
+				get_seqam_func(defel, Anum_pg_seqam_seqamgetstate);
+		}
+		else if (pg_strcasecmp(defel->defname, "setstate") == 0)
+		{
+			values[Anum_pg_seqam_seqamsetstate - 1] =
+				get_seqam_func(defel, Anum_pg_seqam_seqamsetstate);
+		}
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("sequence access method parameter \"%s\" not recognized",
+						defel->defname)));
+	}
+
+	/*
+	 * Validation.
+	 */
+	if (!OidIsValid(DatumGetObjectId(values[Anum_pg_seqam_seqamreloptions - 1])))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+				 errmsg("sequence access method reloptions function is required")));
+
+	if (!OidIsValid(DatumGetObjectId(values[Anum_pg_seqam_seqaminit - 1])))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+				 errmsg("sequence access method init function is required")));
+
+	if (!OidIsValid(DatumGetObjectId(values[Anum_pg_seqam_seqamalloc - 1])))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+				 errmsg("sequence access method alloc function is required")));
+
+	if (!OidIsValid(DatumGetObjectId(values[Anum_pg_seqam_seqamsetval - 1])))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+				 errmsg("sequence access method setval function is required")));
+
+	if (!OidIsValid(DatumGetObjectId(values[Anum_pg_seqam_seqamgetstate - 1])))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+				 errmsg("sequence access method getstate function is required")));
+
+	if (!OidIsValid(DatumGetObjectId(values[Anum_pg_seqam_seqamsetstate - 1])))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+				 errmsg("sequence access method setstate function is required")));
+
+	/*
+	 * Insert tuple into pg_seqam.
+	 */
+	rel = heap_open(SeqAccessMethodRelationId, RowExclusiveLock);
+
+	tuple = heap_form_tuple(rel->rd_att, values, nulls);
+
+	seqamoid = simple_heap_insert(rel, tuple);
+
+	CatalogUpdateIndexes(rel, tuple);
+
+	makeSeqAMDependencies(tuple);
+
+	heap_freetuple(tuple);
+
+	/* Post creation hook */
+	InvokeObjectPostCreateHook(SeqAccessMethodRelationId, seqamoid, 0);
+
+	heap_close(rel, RowExclusiveLock);
+
+	return seqamoid;
+}
+
+/*
+ * Drop a sequence access method.
+ */
+void
+RemoveSeqAMById(Oid seqamoid)
+{
+	Relation	rel;
+	HeapTuple	tuple;
+	Form_pg_seqam seqam;
+
+	/*
+	 * Find the target tuple
+	 */
+	rel = heap_open(SeqAccessMethodRelationId, RowExclusiveLock);
+
+	tuple = SearchSysCache1(SEQAMOID, ObjectIdGetDatum(seqamoid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for sequence access method %u",
+			 seqamoid);
+
+	seqam = (Form_pg_seqam) GETSTRUCT(tuple);
+	/* Can't drop builtin local sequence access method. */
+	if (seqamoid == LOCAL_SEQAM_OID)
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("permission denied for sequence access method %s",
+						NameStr(seqam->seqamname))));
+
+	/*
+	 * Remove the pg_seqam tuple (this will roll back if we fail below)
+	 */
+	simple_heap_delete(rel, &tuple->t_self);
+
+	ReleaseSysCache(tuple);
+
+	heap_close(rel, RowExclusiveLock);
+}
 
 /*
  * get_seqam_oid - given a sequence AM name, look up the OID

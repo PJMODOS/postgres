@@ -437,6 +437,18 @@ static const ObjectPropertyType ObjectProperty[] =
 		Anum_pg_type_typacl,
 		ACL_KIND_TYPE,
 		true
+	},
+	{
+		SeqAccessMethodRelationId,
+		SeqAMOidIndexId,
+		SEQAMOID,
+		SEQAMNAME,
+		Anum_pg_seqam_seqamname,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		-1,
+		true
 	}
 };
 
@@ -536,7 +548,9 @@ ObjectTypeMap[] =
 	/* OCLASS_EVENT_TRIGGER */
 	{ "event trigger", OBJECT_EVENT_TRIGGER },
 	/* OCLASS_POLICY */
-	{ "policy", OBJECT_POLICY }
+	{ "policy", OBJECT_POLICY },
+	/* OCLASS_SEQAM */
+	{ "sequence access method", OBJECT_SEQAM }
 };
 
 const ObjectAddress InvalidObjectAddress =
@@ -691,6 +705,7 @@ get_object_address(ObjectType objtype, List *objname, List *objargs,
 			case OBJECT_FDW:
 			case OBJECT_FOREIGN_SERVER:
 			case OBJECT_EVENT_TRIGGER:
+			case OBJECT_SEQAM:
 				address = get_object_address_unqualified(objtype,
 														 objname, missing_ok);
 				break;
@@ -942,6 +957,9 @@ get_object_address_unqualified(ObjectType objtype,
 			case OBJECT_EVENT_TRIGGER:
 				msg = gettext_noop("event trigger name cannot be qualified");
 				break;
+			case OBJECT_SEQAM:
+				msg = gettext_noop("sequence access method name cannot be qualified");
+				break;
 			default:
 				elog(ERROR, "unrecognized objtype: %d", (int) objtype);
 				msg = NULL;		/* placate compiler */
@@ -1000,6 +1018,11 @@ get_object_address_unqualified(ObjectType objtype,
 		case OBJECT_EVENT_TRIGGER:
 			address.classId = EventTriggerRelationId;
 			address.objectId = get_event_trigger_oid(name, missing_ok);
+			address.objectSubId = 0;
+			break;
+		case OBJECT_SEQAM:
+			address.classId = SeqAccessMethodRelationId;
+			address.objectId = get_seqam_oid(name, missing_ok);
 			address.objectSubId = 0;
 			break;
 		default:
@@ -2074,6 +2097,7 @@ check_object_ownership(Oid roleid, ObjectType objtype, ObjectAddress address,
 			break;
 		case OBJECT_TSPARSER:
 		case OBJECT_TSTEMPLATE:
+		case OBJECT_SEQAM:
 			/* We treat these object types as being owned by superusers */
 			if (!superuser_arg(roleid))
 				ereport(ERROR,
@@ -3024,6 +3048,21 @@ getObjectDescription(const ObjectAddress *object)
 				break;
 			}
 
+		case OCLASS_SEQAM:
+			{
+				HeapTuple	tup;
+
+				tup = SearchSysCache1(SEQAMOID,
+									  ObjectIdGetDatum(object->objectId));
+				if (!HeapTupleIsValid(tup))
+					elog(ERROR, "cache lookup failed for sequence access method %u",
+						 object->objectId);
+				appendStringInfo(&buffer, _("sequence access method %s"),
+						NameStr(((Form_pg_seqam) GETSTRUCT(tup))->seqamname));
+				ReleaseSysCache(tup);
+				break;
+			}
+
 		default:
 			appendStringInfo(&buffer, "unrecognized object %u %u %d",
 							 object->classId,
@@ -3499,6 +3538,10 @@ getObjectTypeDescription(const ObjectAddress *object)
 
 		case OCLASS_POLICY:
 			appendStringInfoString(&buffer, "policy");
+			break;
+
+		case OCLASS_SEQAM:
+			appendStringInfoString(&buffer, "sequence access method");
 			break;
 
 		default:
@@ -4420,6 +4463,27 @@ getObjectIdentityParts(const ObjectAddress *object,
 				appendStringInfoString(&buffer,
 							   quote_identifier(NameStr(trigForm->evtname)));
 				ReleaseSysCache(tup);
+				break;
+			}
+
+		case OCLASS_SEQAM:
+			{
+				char	   *seqamname;
+				HeapTuple	tup;
+				Form_pg_seqam seqamForm;
+
+				tup = SearchSysCache1(SEQAMOID,
+									  ObjectIdGetDatum(object->objectId));
+				if (!HeapTupleIsValid(tup))
+					elog(ERROR, "cache lookup failed for sequence access method %u",
+						 object->objectId);
+				seqamForm = (Form_pg_seqam) GETSTRUCT(tup);
+				seqamname = pstrdup(NameStr(seqamForm->seqamname));
+				ReleaseSysCache(tup);
+				appendStringInfoString(&buffer,
+							   quote_identifier(seqamname));
+				if (objname)
+					*objname = list_make1(seqamname);
 				break;
 			}
 

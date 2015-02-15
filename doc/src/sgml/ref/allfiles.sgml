@@ -74,6 +74,7 @@ Complete list of usable sgml source files in this directory.
 <!ENTITY createRole         SYSTEM "create_role.sgml">
 <!ENTITY createRule         SYSTEM "create_rule.sgml">
 <!ENTITY createSchema       SYSTEM "create_schema.sgml">
+<!ENTITY createSeqAM        SYSTEM "create_seqam.sgml">
 <!ENTITY createSequence     SYSTEM "create_sequence.sgml">
 <!ENTITY createServer       SYSTEM "create_server.sgml">
 <!ENTITY createTable        SYSTEM "create_table.sgml">
@@ -117,6 +118,7 @@ Complete list of usable sgml source files in this directory.
 <!ENTITY dropRole           SYSTEM "drop_role.sgml">
 <!ENTITY dropRule           SYSTEM "drop_rule.sgml">
 <!ENTITY dropSchema         SYSTEM "drop_schema.sgml">
+<!ENTITY dropSeqAM          SYSTEM "drop_seqam.sgml">
 <!ENTITY dropSequence       SYSTEM "drop_sequence.sgml">
 <!ENTITY dropServer         SYSTEM "drop_server.sgml">
 <!ENTITY dropTable          SYSTEM "drop_table.sgml">

@@ -1,0 +1,87 @@
+<!--
+doc/src/sgml/ref/drop_seqam.sgml
+PostgreSQL documentation
+-->
+
+<refentry id="SQL-DROPSEQAM">
+ <indexterm zone="sql-dropseqam">
+  <primary>DROP ACCESS METHOD FOR SEQUENCES</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>DROP ACCESS METHOD FOR SEQUENCES</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>DROP ACCESS METHOD FOR SEQUENCES</refname>
+  <refpurpose>remove a custom sequence access method</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+DROP ACCESS METHOD FOR SEQUENCES [ IF EXISTS ] <replaceable class="parameter">name</replaceable>
+</synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+
+  <para>
+   <command>DROP ACCESS METHOD FOR SEQUENCES</command> drop an existing
+   sequence access method.
+  </para>
+
+  <para>
+   You must be a superuser to use the
+   <command>DROP ACCESS METHOD FOR SEQUENCES</command>.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>Parameters</title>
+
+  <variablelist>
+
+   <varlistentry>
+    <term><literal>IF EXISTS</literal></term>
+    <listitem>
+     <para>
+      Do not throw an error if the sequence access method does not exist.
+      A notice is issued in this case.
+     </para>
+    </listitem>
+   </varlistentry>
+
+   <varlistentry>
+    <term><replaceable class="parameter">name</replaceable></term>
+    <listitem>
+     <para>
+      The name of an existing sequence access method to be removed.
+     </para>
+    </listitem>
+   </varlistentry>
+
+  </variablelist>
+
+ </refsect1>
+
+ <refsect1>
+  <title>Compatibility</title>
+
+  <para>
+   There is no
+   <command>DDROP ACCESS METHOD FOR SEQUENCES</command> statement in the SQL
+   standard.
+  </para>
+ </refsect1>
+
+ <refsect1>
+  <title>See Also</title>
+
+  <simplelist type="inline">
+   <member><xref linkend="sql-createseqam"></member>
+  </simplelist>
+ </refsect1>
+</refentry>

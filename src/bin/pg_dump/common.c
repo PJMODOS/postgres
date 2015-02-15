@@ -104,6 +104,7 @@ getSchemaData(Archive *fout, DumpOptions *dopt, int *numTablesPtr)
 	int			numForeignServers;
 	int			numDefaultACLs;
 	int			numEventTriggers;
+	int			numSeqAMs;
 
 	if (g_verbose)
 		write_msg(NULL, "reading schemas\n");
@@ -255,6 +256,10 @@ getSchemaData(Archive *fout, DumpOptions *dopt, int *numTablesPtr)
 	if (g_verbose)
 		write_msg(NULL, "reading policies\n");
 	getPolicies(fout, tblinfo, numTables);
+
+	if (g_verbose)
+		write_msg(NULL, "reading sequence access methods\n");
+	getSeqAMs(fout, &numSeqAMs);
 
 	*numTablesPtr = numTables;
 	return tblinfo;
