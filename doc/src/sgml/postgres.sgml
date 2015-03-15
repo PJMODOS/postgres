@@ -250,6 +250,7 @@
   &gin;
   &brin;
   &storage;
+  &tablesample-method;
   &bki;
   &planstats;
 
