@@ -37,13 +37,12 @@ typedef struct
 	int32 ntuples;				/* number of tuples to return */
 	int32 donetuples;			/* tuples already returned */
 	OffsetNumber lt;			/* last tuple returned from current block */
+	BlockNumber lb;				/* last block */
 } SystemSamplerData;
 
 
 PG_FUNCTION_INFO_V1(tsm_system_rows_init);
-PG_FUNCTION_INFO_V1(tsm_system_rows_nextblock);
-PG_FUNCTION_INFO_V1(tsm_system_rows_nexttuple);
-PG_FUNCTION_INFO_V1(tsm_system_rows_examinetuple);
+PG_FUNCTION_INFO_V1(tsm_system_rows_getnext);
 PG_FUNCTION_INFO_V1(tsm_system_rows_end);
 PG_FUNCTION_INFO_V1(tsm_system_rows_reset);
 PG_FUNCTION_INFO_V1(tsm_system_rows_cost);
@@ -89,68 +88,50 @@ tsm_system_rows_init(PG_FUNCTION_ARGS)
 }
 
 /*
- * Get next block number or InvalidBlockNumber when we're done.
- *
- * Uses the same logic as VACUUM for picking the random blocks.
+ * Get next tuple.
  */
 Datum
-tsm_system_rows_nextblock(PG_FUNCTION_ARGS)
+tsm_system_rows_getnext(PG_FUNCTION_ARGS)
 {
 	TableSampleDesc	   *tsdesc = (TableSampleDesc *) PG_GETARG_POINTER(0);
 	SystemSamplerData  *sampler = (SystemSamplerData *) tsdesc->tsmdata;
-	BlockNumber			blockno;
-
-	if (!BlockSampler_HasMore(&sampler->bs) ||
-		sampler->donetuples >= sampler->ntuples)
-		PG_RETURN_UINT32(InvalidBlockNumber);
-
-	blockno = BlockSampler_Next(&sampler->bs);
-
-	PG_RETURN_UINT32(blockno);
-}
-
-/*
- * Get next tuple offset in current block or InvalidOffsetNumber if we are done
- * with this block.
- */
-Datum
-tsm_system_rows_nexttuple(PG_FUNCTION_ARGS)
-{
-	TableSampleDesc	   *tsdesc = (TableSampleDesc *) PG_GETARG_POINTER(0);
-	OffsetNumber		maxoffset = PG_GETARG_UINT16(2);
-	SystemSamplerData  *sampler = (SystemSamplerData *) tsdesc->tsmdata;
+	HeapTuple			tuple;
+	ItemPointerData		tid;
+	bool				visible = false;
+	BlockNumber			blockno = sampler->lb;
 	OffsetNumber		tupoffset = sampler->lt;
 
-	if (tupoffset == InvalidOffsetNumber)
-		tupoffset = FirstOffsetNumber;
-	else
-		tupoffset++;
+	if (sampler->donetuples >= sampler->ntuples)
+		PG_RETURN_NULL();
 
-	if (tupoffset > maxoffset ||
-		sampler->donetuples >= sampler->ntuples)
-		tupoffset = InvalidOffsetNumber;
+	/* Find next visible tuple. */
+	while (!visible)
+	{
+		if (blockno == InvalidBlockNumber || tupoffset == InvalidOffsetNumber)
+		{
+			if (!BlockSampler_HasMore(&sampler->bs))
+				PG_RETURN_NULL();
 
+			blockno = BlockSampler_Next(&sampler->bs);
+		}
+
+		if (tupoffset == InvalidOffsetNumber)
+			tupoffset = FirstOffsetNumber;
+		else
+			tupoffset++;
+
+		ItemPointerSet(&tid, blockno, tupoffset);
+		tuple = tablesample_source_gettup(tsdesc, &tid, &visible);
+		if (!tuple)
+			continue;
+	}
+
+	sampler->lb = blockno;
 	sampler->lt = tupoffset;
-
-	PG_RETURN_UINT16(tupoffset);
-}
-
-/*
- * Examine tuple and decide if it should be returned.
- */
-Datum
-tsm_system_rows_examinetuple(PG_FUNCTION_ARGS)
-{
-	TableSampleDesc	   *tsdesc = (TableSampleDesc *) PG_GETARG_POINTER(0);
-	bool				visible = PG_GETARG_BOOL(3);
-	SystemSamplerData  *sampler = (SystemSamplerData *) tsdesc->tsmdata;
-
-	if (!visible)
-		PG_RETURN_BOOL(false);
 
 	sampler->donetuples++;
 
-	PG_RETURN_BOOL(true);
+	PG_RETURN_POINTER(tuple);
 }
 
 /*

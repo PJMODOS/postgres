@@ -8,18 +8,8 @@ RETURNS void
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT;
 
-CREATE FUNCTION tsm_system_rows_nextblock(internal)
-RETURNS int4
-AS 'MODULE_PATHNAME'
-LANGUAGE C STRICT;
-
-CREATE FUNCTION tsm_system_rows_nexttuple(internal, int4, int2)
-RETURNS int2
-AS 'MODULE_PATHNAME'
-LANGUAGE C STRICT;
-
-CREATE FUNCTION tsm_system_rows_examinetuple(internal, int4, internal, bool)
-RETURNS bool
+CREATE FUNCTION tsm_system_rows_getnext(internal)
+RETURNS internal
 AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT;
 
@@ -39,7 +29,6 @@ AS 'MODULE_PATHNAME'
 LANGUAGE C STRICT;
 
 INSERT INTO pg_tablesample_method VALUES('system_rows', false, true,
-	'tsm_system_rows_init', 'tsm_system_rows_nextblock',
-	'tsm_system_rows_nexttuple', 'tsm_system_rows_examinetuple',
+	'tsm_system_rows_init', 'tsm_system_rows_getnext',
 	'tsm_system_rows_end', 'tsm_system_rows_reset', 'tsm_system_rows_cost');
 
